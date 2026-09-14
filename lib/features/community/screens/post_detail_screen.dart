@@ -6,14 +6,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/community_model.dart';
 import '../../../data/services/api_service.dart';
 import '../providers/community_provider.dart';
-import '../../auth/providers/auth_provider.dart';
 
-final postDetailProvider = FutureProvider.family<CommunityPostModel?, int>(
-  (ref, postId) async {
-    final posts = ref.read(communityProvider).posts;
-    return posts.firstWhere((p) => p.id == postId,
-        orElse: () => posts.first);
-  },
+final postDetailProvider = FutureProvider.family<CommunityPostModel, int>(
+  (ref, postId) => ref.read(apiServiceProvider).getCommunityPost(postId),
 );
 
 class PostDetailScreen extends ConsumerStatefulWidget {
@@ -54,88 +49,97 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(communityProvider);
-    CommunityPostModel? post;
-    try {
-      post = state.posts.firstWhere((p) => p.id == widget.postId);
-    } catch (_) {}
+    final postAsync = ref.watch(postDetailProvider(widget.postId));
 
-    if (post == null) {
-      return Scaffold(
-        appBar: AppBar(leading: BackButton()),
-        body: const Center(
-            child: Text('Post not found',
-                style: TextStyle(color: AppColors.textSecondary))),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text('Discussion'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              post.isLiked
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              color:
-                  post.isLiked ? AppColors.error : AppColors.textSecondary,
-            ),
-            onPressed: () =>
-                ref.read(communityProvider.notifier).toggleLike(post!.id),
+    return postAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
           ),
-        ],
+          title: const Text('Discussion'),
+        ),
+        body: const Center(
+            child: CircularProgressIndicator(color: AppColors.primary)),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _PostHeader(post: post),
-                const SizedBox(height: 16),
-                Text(
-                  post.content,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 15,
-                    height: 1.7,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Comments (${post.commentsCount + _localComments.length})',
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 12),
-                ...post.comments.map((c) => _CommentTile(comment: c)),
-                ..._localComments.map((c) => _CommentTile(comment: c)),
-                if (post.comments.isEmpty && _localComments.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: Text('Be the first to comment!',
-                          style:
-                              TextStyle(color: AppColors.textMuted)),
+      error: (_, __) => Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const Center(
+            child: Text('Failed to load post',
+                style: TextStyle(color: AppColors.textSecondary))),
+      ),
+      data: (post) => Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
+          ),
+          title: const Text('Discussion'),
+          actions: [
+            IconButton(
+              icon: Icon(
+                post.isLiked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: post.isLiked ? AppColors.error : AppColors.textSecondary,
+              ),
+              onPressed: () =>
+                  ref.read(communityProvider.notifier).toggleLike(post.id),
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _PostHeader(post: post),
+                  const SizedBox(height: 16),
+                  Text(
+                    post.content,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 15,
+                      height: 1.7,
                     ),
                   ),
-                const SizedBox(height: 80),
-              ],
+                  const SizedBox(height: 24),
+                  Text(
+                    'Comments (${post.commentsCount + _localComments.length})',
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  ...post.comments.map((c) => _CommentTile(comment: c)),
+                  ..._localComments.map((c) => _CommentTile(comment: c)),
+                  if (post.comments.isEmpty && _localComments.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: Text('Be the first to comment!',
+                            style: TextStyle(color: AppColors.textMuted)),
+                      ),
+                    ),
+                  const SizedBox(height: 80),
+                ],
+              ),
             ),
-          ),
-          _CommentInput(
-            controller: _commentCtrl,
-            isLoading: _isSending,
-            onSend: _sendComment,
-          ),
-        ],
+            _CommentInput(
+              controller: _commentCtrl,
+              isLoading: _isSending,
+              onSend: _sendComment,
+            ),
+          ],
+        ),
       ),
     );
   }

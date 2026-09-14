@@ -254,6 +254,11 @@ class ApiService {
     return CommunityPostModel.fromJson(response.data['data'] ?? response.data);
   }
 
+  Future<CommunityPostModel> getCommunityPost(int postId) async {
+    final response = await _dio.get('/community/$postId');
+    return CommunityPostModel.fromJson(response.data['data'] ?? response.data);
+  }
+
   Future<void> likePost(int postId) async {
     await _dio.post('/community/$postId/like');
   }
