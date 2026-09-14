@@ -28,15 +28,16 @@ class SubjectModel {
   });
 
   factory SubjectModel.fromJson(Map<String, dynamic> json) {
+    final slug = json['slug'] ?? json['code'] ?? json['id'].toString();
     return SubjectModel(
-      id: json['id'],
-      name: json['name'],
-      slug: json['slug'],
+      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      slug: slug,
       description: json['description'],
-      icon: json['icon'],
+      icon: json['icon'] ?? json['cover_image'],
       color: json['color'],
-      form: json['form'] ?? 'Form 1',
-      isCore: json['is_core'] ?? false,
+      form: json['form'] ?? json['grade_level'] ?? 'Form 1',
+      isCore: json['is_core'] ?? json['is_compulsory'] ?? false,
       topicsCount: json['topics_count'] ?? 0,
       lessonsCount: json['lessons_count'] ?? 0,
       progressPercent: json['progress_percent']?.toDouble(),

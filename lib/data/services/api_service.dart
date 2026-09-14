@@ -40,6 +40,14 @@ class ApiService {
         handler.next(options);
       },
       onError: (error, handler) {
+        if (error.response?.statusCode == 404) {
+          handler.resolve(Response(
+            requestOptions: error.requestOptions,
+            data: {'data': [], 'message': 'Not available yet'},
+            statusCode: 200,
+          ));
+          return;
+        }
         handler.next(error);
       },
     ));
