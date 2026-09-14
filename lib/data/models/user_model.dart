@@ -30,11 +30,26 @@ class UserModel {
     this.subscriptionExpiresAt,
     this.totalPoints = 0,
     this.streak = 0,
+    this.enrolledSubjectIds = const [],
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final enrollment = json['enrollment'] as Map<String, dynamic>?;
-    final hasEnrollment = enrollment != null && enrollment['status'] == 'approved';
+    final expiresAtStr = enrollment?['access_expires_at'] ?? json['subscription_expires_at'];
+    final expiresAt = expiresAtStr != null ? DateTime.tryParse(expiresAtStr) : null;
+    final hasActiveSubscription = json['has_active_subscription'] as bool? ??
+        (enrollment != null &&
+            enrollment['status'] == 'approved' &&
+            (expiresAt == null || expiresAt.isAfter(DateTime.now())));
+    final enrolledSubjects = enrollment?['subjects'] as List?;
+    final enrolledSubjectIds = enrolledSubjects
+            ?.map<int>((s) => s['id'] is int ? s['id'] as int : int.parse(s['id'].toString()))
+            .toList() ??
+        <int>[];
+    final savedIds = json['enrolled_subject_ids'] as List?;
+    final mergedIds = enrolledSubjectIds.isNotEmpty
+        ? enrolledSubjectIds
+        : savedIds?.map<int>((e) => e is int ? e : int.parse(e.toString())).toList() ?? <int>[];
     return UserModel(
       id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
       name: json['name'] ?? '',
@@ -46,12 +61,11 @@ class UserModel {
       form: json['grade_level'] ?? json['form'],
       schoolName: json['school_name'],
       profilePhoto: json['avatar'] ?? json['profile_photo'] ?? json['profile_photo_url'],
-      hasActiveSubscription: json['has_active_subscription'] ?? hasEnrollment,
-      subscriptionExpiresAt: (enrollment?['access_expires_at'] ?? json['subscription_expires_at']) != null
-          ? DateTime.tryParse(enrollment?['access_expires_at'] ?? json['subscription_expires_at'])
-          : null,
+      hasActiveSubscription: hasActiveSubscription,
+      subscriptionExpiresAt: expiresAt,
       totalPoints: json['total_points'] ?? 0,
       streak: json['streak'] ?? 0,
+      enrolledSubjectIds: mergedIds,
     );
   }
 
