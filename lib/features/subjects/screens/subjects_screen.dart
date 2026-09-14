@@ -57,27 +57,35 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
                         onRetry: () => ref
                             .read(subjectsProvider.notifier)
                             .loadSubjects(form: _selectedForm))
-                    : state.subjects.isEmpty
-                        ? const _EmptyView()
-                        : GridView.builder(
-                            padding: const EdgeInsets.all(16),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              childAspectRatio: 0.85,
-                            ),
-                            itemCount: state.subjects.length,
-                            itemBuilder: (context, index) {
-                              return SubjectCard(
-                                subject: state.subjects[index],
-                              )
-                                  .animate()
-                                  .fadeIn(delay: (index * 50).ms)
-                                  .slideY(begin: 0.2, end: 0);
-                            },
-                          ),
+                    : Builder(builder: (context) {
+                        final enrolled = state.subjects
+                            .where((s) => s.isEnrolled)
+                            .toList();
+                        final displayList = enrolled.isEmpty
+                            ? state.subjects
+                            : enrolled;
+                        return displayList.isEmpty
+                            ? const _EmptyView()
+                            : GridView.builder(
+                                padding: const EdgeInsets.all(16),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 0.85,
+                                ),
+                                itemCount: displayList.length,
+                                itemBuilder: (context, index) {
+                                  return SubjectCard(
+                                    subject: displayList[index],
+                                  )
+                                      .animate()
+                                      .fadeIn(delay: (index * 50).ms)
+                                      .slideY(begin: 0.2, end: 0);
+                                },
+                              );
+                      }),
           ),
         ],
       ),

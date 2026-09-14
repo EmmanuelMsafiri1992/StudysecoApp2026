@@ -193,7 +193,7 @@ class _LessonTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => context.push(
-          '/subjects/$subjectSlug/lessons/${lesson.id}'),
+          '/subjects/$subjectSlug/lessons/${lesson.id}?topicId=${lesson.topicId}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(

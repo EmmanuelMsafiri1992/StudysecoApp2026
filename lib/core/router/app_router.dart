@@ -128,7 +128,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final slug = state.pathParameters['slug']!;
           final lessonId = int.parse(state.pathParameters['lessonId']!);
-          return LessonScreen(subjectSlug: slug, lessonId: lessonId);
+          final topicId = int.tryParse(state.uri.queryParameters['topicId'] ?? '') ?? 0;
+          return LessonScreen(subjectSlug: slug, lessonId: lessonId, topicId: topicId);
         },
       ),
       GoRoute(

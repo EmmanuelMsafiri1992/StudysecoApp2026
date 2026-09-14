@@ -6,21 +6,21 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/subject_model.dart';
 import '../../../data/services/api_service.dart';
 import '../providers/subjects_provider.dart';
-import '../../auth/providers/auth_provider.dart';
 
-final lessonProvider = FutureProvider.family<LessonModel, (String, int)>(
+final lessonProvider = FutureProvider.family<LessonModel, (int, int)>(
   (ref, params) async {
-    final (subjectSlug, lessonId) = params;
-    return ref.read(apiServiceProvider).getLesson(0, lessonId);
+    final (topicId, lessonId) = params;
+    return ref.read(apiServiceProvider).getLesson(topicId, lessonId);
   },
 );
 
 class LessonScreen extends ConsumerStatefulWidget {
   final String subjectSlug;
   final int lessonId;
+  final int topicId;
 
   const LessonScreen(
-      {super.key, required this.subjectSlug, required this.lessonId});
+      {super.key, required this.subjectSlug, required this.lessonId, this.topicId = 0});
 
   @override
   ConsumerState<LessonScreen> createState() => _LessonScreenState();
@@ -33,7 +33,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   @override
   Widget build(BuildContext context) {
     final lessonAsync =
-        ref.watch(lessonProvider((widget.subjectSlug, widget.lessonId)));
+        ref.watch(lessonProvider((widget.topicId, widget.lessonId)));
 
     return Scaffold(
       appBar: AppBar(
@@ -72,10 +72,15 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     return _buildTextLesson(lesson);
   }
 
-  Widget _buildVideoLesson(LessonModel lesson) {
-    _webController ??= WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadHtmlString('''
+  bool _isEmbeddableUrl(String url) {
+    return url.contains('youtube.com') ||
+        url.contains('youtu.be') ||
+        url.contains('vimeo.com');
+  }
+
+  String _buildVideoHtml(String videoUrl) {
+    if (_isEmbeddableUrl(videoUrl)) {
+      return '''
         <!DOCTYPE html>
         <html>
         <head>
@@ -86,10 +91,35 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           </style>
         </head>
         <body>
-          <iframe src="${lesson.videoUrl}" allowfullscreen></iframe>
+          <iframe src="$videoUrl" allowfullscreen></iframe>
         </body>
         </html>
-      ''');
+      ''';
+    }
+    return '''
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { margin: 0; background: #0F172A; display: flex; align-items: center; justify-content: center; height: 220px; }
+          video { width: 100%; height: 220px; background: #0F172A; }
+        </style>
+      </head>
+      <body>
+        <video controls autoplay playsinline>
+          <source src="$videoUrl">
+          Your browser does not support the video tag.
+        </video>
+      </body>
+      </html>
+    ''';
+  }
+
+  Widget _buildVideoLesson(LessonModel lesson) {
+    _webController ??= WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadHtmlString(_buildVideoHtml(lesson.videoUrl!));
 
     return Column(
       children: [
