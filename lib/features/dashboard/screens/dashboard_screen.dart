@@ -480,7 +480,7 @@ class _ContinueLearningCard extends StatelessWidget {
     final progress = (subject['progress_percent'] ?? 0.0) / 100.0;
     return GestureDetector(
       onTap: () =>
-          context.push('/subjects/${subject['slug'] ?? ''}'),
+          context.push('/subjects/${subject['id'] ?? subject['slug'] ?? ''}'),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),

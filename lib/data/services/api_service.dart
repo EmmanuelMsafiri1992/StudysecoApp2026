@@ -103,8 +103,14 @@ class ApiService {
   }
 
   Future<List<TopicModel>> getTopics(String subjectSlug) async {
-    final response = await _dio.get('/subjects/$subjectSlug/topics');
-    final list = response.data['data'] ?? response.data;
+    final response = await _dio.get('/subjects/$subjectSlug');
+    final data = response.data['data'] ?? response.data;
+    final topics = data['topics'] as List?;
+    if (topics != null) {
+      return topics.map((t) => TopicModel.fromJson(t)).toList();
+    }
+    final listResponse = await _dio.get('/subjects/$subjectSlug/topics');
+    final list = listResponse.data['data'] ?? listResponse.data;
     return (list as List).map((t) => TopicModel.fromJson(t)).toList();
   }
 

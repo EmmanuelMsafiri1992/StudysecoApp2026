@@ -68,16 +68,17 @@ class TopicModel {
   });
 
   factory TopicModel.fromJson(Map<String, dynamic> json) {
+    final topicId = json['id'] is int ? json['id'] as int : int.parse(json['id'].toString());
     return TopicModel(
-      id: json['id'],
-      subjectId: json['subject_id'],
-      title: json['title'],
+      id: topicId,
+      subjectId: json['subject_id'] ?? 0,
+      title: json['title'] ?? json['name'] ?? '',
       description: json['description'],
       order: json['order'] ?? 0,
-      lessonsCount: json['lessons_count'] ?? 0,
+      lessonsCount: json['lessons_count'] ?? (json['lessons'] as List?)?.length ?? 0,
       progressPercent: json['progress_percent']?.toDouble(),
       lessons: (json['lessons'] as List<dynamic>?)
-              ?.map((l) => LessonModel.fromJson(l))
+              ?.map((l) => LessonModel.fromJson(l, topicId: topicId))
               .toList() ??
           [],
     );
@@ -107,14 +108,19 @@ class LessonModel {
     required this.order,
   });
 
-  factory LessonModel.fromJson(Map<String, dynamic> json) {
+  factory LessonModel.fromJson(Map<String, dynamic> json, {int topicId = 0}) {
+    final rawUrl = json['video_url'] as String?;
+    String? videoUrl;
+    if (rawUrl != null && rawUrl.isNotEmpty) {
+      videoUrl = rawUrl.startsWith('http') ? rawUrl : 'https://studyseco.com$rawUrl';
+    }
     return LessonModel(
-      id: json['id'],
-      topicId: json['topic_id'],
-      title: json['title'],
-      type: json['type'] ?? 'text',
-      content: json['content'],
-      videoUrl: json['video_url'],
+      id: json['id'] is int ? json['id'] as int : int.parse(json['id'].toString()),
+      topicId: json['topic_id'] ?? topicId,
+      title: json['title'] ?? '',
+      type: json['type'] ?? (videoUrl != null ? 'video' : 'text'),
+      content: json['content'] ?? json['description'],
+      videoUrl: videoUrl,
       durationMinutes: json['duration_minutes'] ?? 0,
       isCompleted: json['is_completed'] ?? false,
       order: json['order'] ?? 0,

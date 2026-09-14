@@ -152,7 +152,7 @@ class SubjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _getColors(subject.color);
     return GestureDetector(
-      onTap: () => context.push('/subjects/${subject.slug}'),
+      onTap: () => context.push('/subjects/${subject.id}'),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
