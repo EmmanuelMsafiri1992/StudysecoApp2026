@@ -92,6 +92,7 @@ class LessonModel {
   final String type;
   final String? content;
   final String? videoUrl;
+  final String? transcript;
   final int durationMinutes;
   final bool isCompleted;
   final int order;
@@ -103,6 +104,7 @@ class LessonModel {
     required this.type,
     this.content,
     this.videoUrl,
+    this.transcript,
     this.durationMinutes = 0,
     this.isCompleted = false,
     required this.order,
@@ -121,6 +123,7 @@ class LessonModel {
       type: json['type'] ?? (videoUrl != null ? 'video' : 'text'),
       content: json['content'] ?? json['description'],
       videoUrl: videoUrl,
+      transcript: json['transcript'] as String?,
       durationMinutes: json['duration_minutes'] ?? 0,
       isCompleted: json['is_completed'] ?? false,
       order: json['order'] ?? 0,

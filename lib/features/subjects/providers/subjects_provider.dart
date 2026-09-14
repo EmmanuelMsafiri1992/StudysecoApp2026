@@ -127,6 +127,7 @@ class TopicsNotifier extends StateNotifier<TopicsState> {
               type: lesson.type,
               content: lesson.content,
               videoUrl: lesson.videoUrl,
+              transcript: lesson.transcript,
               durationMinutes: lesson.durationMinutes,
               isCompleted: true,
               order: lesson.order,

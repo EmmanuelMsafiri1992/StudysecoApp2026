@@ -22,6 +22,7 @@ class LessonScreen extends ConsumerStatefulWidget {
 class _LessonScreenState extends ConsumerState<LessonScreen> {
   WebViewController? _webController;
   bool _isCompleted = false;
+  bool _transcriptEnabled = true;
 
   @override
   Widget build(BuildContext context) {
@@ -170,6 +171,11 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 16),
+                const Divider(color: AppColors.divider),
+                const SizedBox(height: 16),
+                _buildTranscriptSection(lesson),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -228,9 +234,126 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                 height: 1.8,
               ),
             ),
+          const SizedBox(height: 24),
+          const Divider(color: AppColors.divider),
+          const SizedBox(height: 16),
+          _buildTranscriptSection(lesson),
           const SizedBox(height: 80),
         ],
       ),
+    );
+  }
+
+  Widget _buildTranscriptSection(LessonModel lesson) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.subtitles_outlined,
+                color: AppColors.primary, size: 20),
+            const SizedBox(width: 8),
+            const Text(
+              'Transcript',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => setState(() => _transcriptEnabled = !_transcriptEnabled),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _transcriptEnabled
+                      ? AppColors.primary.withOpacity(0.15)
+                      : AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _transcriptEnabled
+                        ? AppColors.primary.withOpacity(0.4)
+                        : AppColors.divider,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _transcriptEnabled
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 14,
+                      color: _transcriptEnabled
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _transcriptEnabled ? 'Hide' : 'Show',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _transcriptEnabled
+                            ? AppColors.primary
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (_transcriptEnabled) ...[
+          const SizedBox(height: 16),
+          if (lesson.transcript != null && lesson.transcript!.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Text(
+                lesson.transcript!,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 15,
+                  height: 1.8,
+                ),
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Column(
+                children: const [
+                  Icon(Icons.subtitles_off_outlined,
+                      color: AppColors.textMuted, size: 32),
+                  SizedBox(height: 8),
+                  Text(
+                    'No transcript available for this lesson',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
     );
   }
 
