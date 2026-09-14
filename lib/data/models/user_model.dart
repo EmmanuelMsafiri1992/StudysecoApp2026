@@ -1,0 +1,107 @@
+class UserModel {
+  final int id;
+  final String name;
+  final String email;
+  final String role;
+  final String? phone;
+  final String? country;
+  final String? currency;
+  final String? form;
+  final String? schoolName;
+  final String? profilePhoto;
+  final bool hasActiveSubscription;
+  final DateTime? subscriptionExpiresAt;
+  final int totalPoints;
+  final int streak;
+
+  UserModel({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
+    this.phone,
+    this.country,
+    this.currency,
+    this.form,
+    this.schoolName,
+    this.profilePhoto,
+    this.hasActiveSubscription = false,
+    this.subscriptionExpiresAt,
+    this.totalPoints = 0,
+    this.streak = 0,
+  });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    final enrollment = json['enrollment'] as Map<String, dynamic>?;
+    final hasEnrollment = enrollment != null && enrollment['status'] == 'approved';
+    return UserModel(
+      id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      role: json['role'] ?? 'student',
+      phone: json['phone'],
+      country: json['country'],
+      currency: json['currency'],
+      form: json['grade_level'] ?? json['form'],
+      schoolName: json['school_name'],
+      profilePhoto: json['avatar'] ?? json['profile_photo'] ?? json['profile_photo_url'],
+      hasActiveSubscription: json['has_active_subscription'] ?? hasEnrollment,
+      subscriptionExpiresAt: (enrollment?['access_expires_at'] ?? json['subscription_expires_at']) != null
+          ? DateTime.tryParse(enrollment?['access_expires_at'] ?? json['subscription_expires_at'])
+          : null,
+      totalPoints: json['total_points'] ?? 0,
+      streak: json['streak'] ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'email': email,
+        'role': role,
+        'phone': phone,
+        'country': country,
+        'currency': currency,
+        'form': form,
+        'school_name': schoolName,
+        'profile_photo': profilePhoto,
+        'has_active_subscription': hasActiveSubscription,
+        'subscription_expires_at': subscriptionExpiresAt?.toIso8601String(),
+        'total_points': totalPoints,
+        'streak': streak,
+      };
+
+  UserModel copyWith({
+    int? id,
+    String? name,
+    String? email,
+    String? role,
+    String? phone,
+    String? country,
+    String? currency,
+    String? form,
+    String? schoolName,
+    String? profilePhoto,
+    bool? hasActiveSubscription,
+    DateTime? subscriptionExpiresAt,
+    int? totalPoints,
+    int? streak,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      phone: phone ?? this.phone,
+      country: country ?? this.country,
+      currency: currency ?? this.currency,
+      form: form ?? this.form,
+      schoolName: schoolName ?? this.schoolName,
+      profilePhoto: profilePhoto ?? this.profilePhoto,
+      hasActiveSubscription: hasActiveSubscription ?? this.hasActiveSubscription,
+      subscriptionExpiresAt: subscriptionExpiresAt ?? this.subscriptionExpiresAt,
+      totalPoints: totalPoints ?? this.totalPoints,
+      streak: streak ?? this.streak,
+    );
+  }
+}

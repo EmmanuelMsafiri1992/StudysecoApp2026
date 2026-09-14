@@ -1,0 +1,62 @@
+name: studyseco_app
+description: StudySeco - Malawian Secondary Education Platform
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Navigation
+  go_router: ^14.6.1
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # HTTP & API
+  dio: ^5.7.0
+
+  # Local storage
+  shared_preferences: ^2.3.3
+  flutter_secure_storage: ^9.2.2
+
+  # UI
+  google_fonts: ^6.2.1
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  smooth_page_indicator: ^1.2.0+3
+  fl_chart: ^0.69.0
+  percent_indicator: ^4.2.3
+
+  # WebView for Paystack
+  webview_flutter: ^4.10.0
+
+  # Image picker (proof of payment)
+  image_picker: ^1.1.2
+
+  # Animations
+  flutter_animate: ^4.5.0
+
+  # Utilities
+  intl: ^0.19.0
+  url_launcher: ^6.3.1
+  connectivity_plus: ^6.1.1
+  fluttertoast: ^10.0.0
+
+  # Icons
+  font_awesome_flutter: ^10.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/animations/
