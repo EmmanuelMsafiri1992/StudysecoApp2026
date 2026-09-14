@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/subject_model.dart';
 import '../../../data/services/api_service.dart';
 import '../providers/subjects_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 
 final lessonProvider = FutureProvider.family<LessonModel, (int, int)>(
   (ref, params) async {
