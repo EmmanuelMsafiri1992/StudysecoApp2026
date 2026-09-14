@@ -232,6 +232,8 @@ class _DashboardContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authProvider).user;
+    final subjectsCount = user?.enrolledSubjectIds.length ?? stats['subjects_count'] ?? 0;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -242,7 +244,7 @@ class _DashboardContent extends ConsumerWidget {
               Expanded(
                 child: _StatCard(
                   label: 'Subjects',
-                  value: '${stats['subjects_count'] ?? 0}',
+                  value: '$subjectsCount',
                   icon: Icons.menu_book_outlined,
                   gradient: AppColors.primaryGradient,
                 ),
