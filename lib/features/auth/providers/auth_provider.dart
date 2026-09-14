@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -34,7 +33,7 @@ class AuthState {
   }
 }
 
-class AuthNotifier extends StateNotifier<AuthState> with ChangeNotifier {
+class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repository;
 
   AuthNotifier(this._repository) : super(const AuthState());
@@ -93,7 +92,6 @@ class AuthNotifier extends StateNotifier<AuthState> with ChangeNotifier {
   Future<void> logout() async {
     await _repository.logout();
     state = const AuthState();
-    notifyListeners();
   }
 
   Future<void> updateProfile(Map<String, dynamic> data) async {

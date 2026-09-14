@@ -1,7 +1,18 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
+
+class _AuthChangeNotifier extends ChangeNotifier {
+  _AuthChangeNotifier(Ref ref) {
+    ref.listen(authProvider, (_, __) => notifyListeners());
+  }
+}
+
+final _authChangeNotifierProvider = Provider<_AuthChangeNotifier>(
+  (ref) => _AuthChangeNotifier(ref),
+);
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -43,7 +54,7 @@ class AppRoutes {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ref.watch(authProvider.notifier);
+  final notifier = ref.watch(_authChangeNotifierProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.onboarding,
