@@ -3,16 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
-
-class _AuthChangeNotifier extends ChangeNotifier {
-  _AuthChangeNotifier(Ref ref) {
-    ref.listen(authProvider, (_, __) => notifyListeners());
-  }
-}
-
-final _authChangeNotifierProvider = Provider<_AuthChangeNotifier>(
-  (ref) => _AuthChangeNotifier(ref),
-);
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -31,6 +21,16 @@ import '../../features/community/screens/post_detail_screen.dart';
 import '../../features/community/screens/create_post_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/achievements/screens/achievements_screen.dart';
+
+class _AuthChangeNotifier extends ChangeNotifier {
+  _AuthChangeNotifier(Ref ref) {
+    ref.listen(authProvider, (_, __) => notifyListeners());
+  }
+}
+
+final _authChangeNotifierProvider = Provider<_AuthChangeNotifier>(
+  (ref) => _AuthChangeNotifier(ref),
+);
 
 class AppRoutes {
   static const String onboarding = '/onboarding';
