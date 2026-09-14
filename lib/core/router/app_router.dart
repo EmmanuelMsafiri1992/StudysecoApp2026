@@ -21,6 +21,7 @@ import '../../features/community/screens/post_detail_screen.dart';
 import '../../features/community/screens/create_post_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/achievements/screens/achievements_screen.dart';
+import '../../features/library/screens/library_screen.dart';
 
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
@@ -50,6 +51,7 @@ class AppRoutes {
   static const String postDetail = '/community/:postId';
   static const String createPost = '/community/new';
   static const String profile = '/profile';
+  static const String library = '/library';
   static const String achievements = '/achievements';
 }
 
@@ -134,6 +136,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.profile,
             builder: (context, state) => const ProfileScreen(),
           ),
+          GoRoute(
+            path: AppRoutes.library,
+            builder: (context, state) => const LibraryScreen(),
+          ),
         ],
       ),
       GoRoute(
@@ -191,6 +197,7 @@ class _MainShellState extends State<MainShell> {
   final List<String> _routes = [
     AppRoutes.dashboard,
     AppRoutes.subjects,
+    AppRoutes.library,
     AppRoutes.quizzes,
     AppRoutes.community,
     AppRoutes.profile,
@@ -226,22 +233,28 @@ class _MainShellState extends State<MainShell> {
                   onTap: () => _navigate(context, 1),
                 ),
                 _NavItem(
-                  icon: Icons.assignment_outlined,
-                  label: 'Quizzes',
+                  icon: Icons.library_books_outlined,
+                  label: 'Library',
                   isActive: _currentIndex == 2,
                   onTap: () => _navigate(context, 2),
                 ),
                 _NavItem(
-                  icon: Icons.people_outline,
-                  label: 'Community',
+                  icon: Icons.assignment_outlined,
+                  label: 'Quizzes',
                   isActive: _currentIndex == 3,
                   onTap: () => _navigate(context, 3),
                 ),
                 _NavItem(
-                  icon: Icons.person_outline,
-                  label: 'Profile',
+                  icon: Icons.people_outline,
+                  label: 'Community',
                   isActive: _currentIndex == 4,
                   onTap: () => _navigate(context, 4),
+                ),
+                _NavItem(
+                  icon: Icons.person_outline,
+                  label: 'Profile',
+                  isActive: _currentIndex == 5,
+                  onTap: () => _navigate(context, 5),
                 ),
               ],
             ),

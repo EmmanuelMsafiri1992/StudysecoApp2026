@@ -7,6 +7,7 @@ import '../models/payment_model.dart';
 import '../models/enrollment_model.dart';
 import '../models/community_model.dart';
 import '../models/achievement_model.dart';
+import '../models/library_model.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -262,6 +263,14 @@ class ApiService {
       'content': content,
     });
     return CommentModel.fromJson(response.data['data'] ?? response.data);
+  }
+
+  // Library
+  Future<List<LibraryMaterialModel>> getLibraryMaterials({int? subjectId}) async {
+    final params = subjectId != null ? {'subject_id': subjectId} : null;
+    final response = await _dio.get('/library', queryParameters: params);
+    final list = response.data['data'] ?? response.data;
+    return (list as List).map((m) => LibraryMaterialModel.fromJson(m)).toList();
   }
 
   // Achievements
