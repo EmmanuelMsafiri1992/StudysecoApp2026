@@ -4,16 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/subject_model.dart';
-import '../../../data/services/api_service.dart';
 import '../providers/subjects_provider.dart';
 import '../../auth/providers/auth_provider.dart';
-
-final lessonProvider = FutureProvider.family<LessonModel, (int, int)>(
-  (ref, params) async {
-    final (topicId, lessonId) = params;
-    return ref.read(apiServiceProvider).getLesson(topicId, lessonId);
-  },
-);
 
 class LessonScreen extends ConsumerStatefulWidget {
   final String subjectSlug;
@@ -33,15 +25,24 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final lessonAsync =
-        ref.watch(lessonProvider((widget.topicId, widget.lessonId)));
+    final topicsState = ref.watch(topicsProvider(widget.subjectSlug));
+
+    LessonModel? lesson;
+    if (!topicsState.isLoading) {
+      for (final topic in topicsState.topics) {
+        for (final l in topic.lessons) {
+          if (l.id == widget.lessonId) {
+            lesson = l;
+            break;
+          }
+        }
+        if (lesson != null) break;
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: lessonAsync.maybeWhen(
-          data: (l) => Text(l.title),
-          orElse: () => const Text('Lesson'),
-        ),
+        title: Text(lesson?.title ?? 'Lesson'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
@@ -55,14 +56,14 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             ),
         ],
       ),
-      body: lessonAsync.when(
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (_, __) => const Center(
-            child: Text('Failed to load lesson',
-                style: TextStyle(color: AppColors.textSecondary))),
-        data: (lesson) => _buildLesson(lesson),
-      ),
+      body: topicsState.isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
+          : lesson == null
+              ? const Center(
+                  child: Text('Failed to load lesson',
+                      style: TextStyle(color: AppColors.textSecondary)))
+              : _buildLesson(lesson),
     );
   }
 
