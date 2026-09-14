@@ -10,6 +10,7 @@ import '../../../features/auth/providers/auth_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 final dashboardStatsProvider = FutureProvider<Map<String, dynamic>>((ref) {
+  ref.watch(authProvider);
   return ref.read(apiServiceProvider).getDashboardStats();
 });
 

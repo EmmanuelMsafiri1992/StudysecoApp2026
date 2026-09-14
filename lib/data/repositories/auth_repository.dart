@@ -11,11 +11,15 @@ class AuthRepository {
 
   Future<UserModel> login(String email, String password) async {
     final data = await _apiService.login(email, password);
-    final token = data['token'] ?? data['access_token'];
+    final token = data['token'] ??
+        data['access_token'] ??
+        data['data']?['token'] ??
+        data['data']?['access_token'];
     if (token != null) {
-      await StorageService.saveToken(token);
+      await StorageService.saveToken(token.toString());
     }
-    final user = UserModel.fromJson(data['user'] ?? data['data']);
+    final userMap = data['user'] ?? data['data']?['user'] ?? data['data'] ?? data;
+    final user = UserModel.fromJson(userMap);
     await StorageService.setString(
         AppConstants.userKey, jsonEncode(user.toJson()));
     return user;
@@ -23,11 +27,15 @@ class AuthRepository {
 
   Future<UserModel> register(Map<String, dynamic> data) async {
     final response = await _apiService.register(data);
-    final token = response['token'] ?? response['access_token'];
+    final token = response['token'] ??
+        response['access_token'] ??
+        response['data']?['token'] ??
+        response['data']?['access_token'];
     if (token != null) {
-      await StorageService.saveToken(token);
+      await StorageService.saveToken(token.toString());
     }
-    final user = UserModel.fromJson(response['user'] ?? response['data']);
+    final userMap = response['user'] ?? response['data']?['user'] ?? response['data'] ?? response;
+    final user = UserModel.fromJson(userMap);
     await StorageService.setString(
         AppConstants.userKey, jsonEncode(user.toJson()));
     return user;
