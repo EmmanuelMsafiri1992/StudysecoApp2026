@@ -4,7 +4,7 @@ class AppConstants {
 
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    defaultValue: 'http://192.168.137.155:8000/api',
+    defaultValue: 'https://studyseco.com/api',
   );
   static const String paystackPublicKey = 'pk_live_YOUR_PAYSTACK_PUBLIC_KEY';
   static const String paystackBaseUrl = 'https://api.paystack.co';

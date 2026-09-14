@@ -197,31 +197,31 @@ class _MainShellState extends State<MainShell> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _NavItem(
-                  icon: Icons.dashboard_rounded,
+                  icon: Icons.home_outlined,
                   label: 'Home',
                   isActive: _currentIndex == 0,
                   onTap: () => _navigate(context, 0),
                 ),
                 _NavItem(
-                  icon: Icons.book_rounded,
+                  icon: Icons.menu_book_outlined,
                   label: 'Subjects',
                   isActive: _currentIndex == 1,
                   onTap: () => _navigate(context, 1),
                 ),
                 _NavItem(
-                  icon: Icons.quiz_rounded,
+                  icon: Icons.assignment_outlined,
                   label: 'Quizzes',
                   isActive: _currentIndex == 2,
                   onTap: () => _navigate(context, 2),
                 ),
                 _NavItem(
-                  icon: Icons.forum_rounded,
+                  icon: Icons.people_outline,
                   label: 'Community',
                   isActive: _currentIndex == 3,
                   onTap: () => _navigate(context, 3),
                 ),
                 _NavItem(
-                  icon: Icons.person_rounded,
+                  icon: Icons.person_outline,
                   label: 'Profile',
                   isActive: _currentIndex == 4,
                   onTap: () => _navigate(context, 4),

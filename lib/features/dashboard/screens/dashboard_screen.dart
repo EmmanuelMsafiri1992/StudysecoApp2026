@@ -25,11 +25,66 @@ class DashboardScreen extends ConsumerWidget {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 180,
+            expandedHeight: 190,
             floating: false,
             pinned: true,
-            backgroundColor: AppColors.background,
+            backgroundColor: const Color(0xFF1E1B4B),
             surfaceTintColor: Colors.transparent,
+            automaticallyImplyLeading: false,
+            title: Row(
+              children: [
+                Image.asset('assets/images/icon.png', height: 32, fit: BoxFit.contain),
+                const SizedBox(width: 8),
+                RichText(
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Study',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'seco',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications_rounded,
+                    color: AppColors.textSecondary),
+                onPressed: () {},
+              ),
+              GestureDetector(
+                onTap: () => context.push(AppRoutes.profile),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.primary,
+                    child: Text(
+                      (user?.name.isNotEmpty == true)
+                          ? user!.name[0].toUpperCase()
+                          : 'S',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: const BoxDecoration(
@@ -41,9 +96,11 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 56, 20, 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -55,60 +112,32 @@ class DashboardScreen extends ConsumerWidget {
                                   'Good ${_greeting()}, 👋',
                                   style: const TextStyle(
                                       color: AppColors.textSecondary,
-                                      fontSize: 14),
+                                      fontSize: 13),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
                                   user?.name.split(' ').first ?? 'Student',
                                   style: const TextStyle(
                                     color: AppColors.textPrimary,
-                                    fontSize: 24,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
                             ),
-                            Row(
-                              children: [
-                                _StreakBadge(streak: user?.streak ?? 0),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => context.push(AppRoutes.profile),
-                                  child: CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: AppColors.primary,
-                                    child: Text(
-                                      (user?.name.isNotEmpty == true)
-                                          ? user!.name[0].toUpperCase()
-                                          : 'S',
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            _StreakBadge(streak: user?.streak ?? 0),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        if (user?.hasActiveSubscription == false)
+                        if (user?.hasActiveSubscription == false) ...[
+                          const SizedBox(height: 12),
                           _PaymentBanner(context: context),
+                        ],
                       ],
                     ),
                   ),
                 ),
               ),
             ),
-            title: Image.asset('assets/images/icon.png', height: 36, fit: BoxFit.contain),
-            centerTitle: false,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications_rounded,
-                    color: AppColors.textSecondary),
-                onPressed: () {},
-              ),
-            ],
           ),
           SliverToBoxAdapter(
             child: statsAsync.when(
@@ -147,20 +176,18 @@ class _PaymentBanner extends StatelessWidget {
         ),
         child: Row(
           children: const [
-            Icon(Icons.warning_amber_rounded,
-                color: AppColors.accent, size: 16),
+            Icon(Icons.lock_outline, color: AppColors.accent, size: 15),
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Activate subscription to access all content',
+                'Subscribe to unlock all content',
                 style: TextStyle(
                     color: AppColors.accent,
                     fontSize: 12,
                     fontWeight: FontWeight.w500),
               ),
             ),
-            Icon(Icons.arrow_forward_ios_rounded,
-                color: AppColors.accent, size: 12),
+            Icon(Icons.chevron_right, color: AppColors.accent, size: 18),
           ],
         ),
       ),
@@ -183,13 +210,13 @@ class _StreakBadge extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('🔥', style: TextStyle(fontSize: 14)),
+          const Icon(Icons.local_fire_department_outlined, color: AppColors.accent, size: 15),
           const SizedBox(width: 4),
           Text(
-            '$streak',
+            '$streak day${streak == 1 ? '' : 's'}',
             style: const TextStyle(
                 color: AppColors.accent,
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w600),
           ),
         ],
@@ -215,7 +242,7 @@ class _DashboardContent extends ConsumerWidget {
                 child: _StatCard(
                   label: 'Subjects',
                   value: '${stats['subjects_count'] ?? 0}',
-                  icon: Icons.book_rounded,
+                  icon: Icons.menu_book_outlined,
                   gradient: AppColors.primaryGradient,
                 ),
               ),
@@ -224,7 +251,7 @@ class _DashboardContent extends ConsumerWidget {
                 child: _StatCard(
                   label: 'Quizzes Done',
                   value: '${stats['quizzes_done'] ?? 0}',
-                  icon: Icons.quiz_rounded,
+                  icon: Icons.assignment_outlined,
                   gradient: AppColors.secondaryGradient,
                 ),
               ),
@@ -237,7 +264,7 @@ class _DashboardContent extends ConsumerWidget {
                 child: _StatCard(
                   label: 'Avg. Score',
                   value: '${stats['avg_score'] ?? 0}%',
-                  icon: Icons.bar_chart_rounded,
+                  icon: Icons.trending_up,
                   gradient: AppColors.accentGradient,
                 ),
               ),
@@ -246,7 +273,7 @@ class _DashboardContent extends ConsumerWidget {
                 child: _StatCard(
                   label: 'Points',
                   value: '${stats['total_points'] ?? 0}',
-                  icon: Icons.star_rounded,
+                  icon: Icons.diamond_outlined,
                   gradient: const LinearGradient(
                     colors: [Color(0xFFEC4899), Color(0xFFBE185D)],
                   ),
@@ -272,37 +299,37 @@ class _DashboardContent extends ConsumerWidget {
             childAspectRatio: 0.9,
             children: [
               _QuickAction(
-                icon: Icons.book_rounded,
+                icon: Icons.menu_book_outlined,
                 label: 'Subjects',
                 color: AppColors.primary,
                 onTap: () => context.go(AppRoutes.subjects),
               ),
               _QuickAction(
-                icon: Icons.quiz_rounded,
+                icon: Icons.assignment_outlined,
                 label: 'Quizzes',
                 color: AppColors.secondary,
                 onTap: () => context.go(AppRoutes.quizzes),
               ),
               _QuickAction(
-                icon: Icons.credit_card_rounded,
+                icon: Icons.payment_outlined,
                 label: 'Payment',
                 color: AppColors.accent,
                 onTap: () => context.push(AppRoutes.payment),
               ),
               _QuickAction(
-                icon: Icons.school_rounded,
+                icon: Icons.how_to_reg_outlined,
                 label: 'Enroll',
                 color: const Color(0xFFEC4899),
                 onTap: () => context.push(AppRoutes.enrollment),
               ),
               _QuickAction(
-                icon: Icons.emoji_events_rounded,
+                icon: Icons.workspace_premium_outlined,
                 label: 'Achievements',
                 color: const Color(0xFF8B5CF6),
                 onTap: () => context.push(AppRoutes.achievements),
               ),
               _QuickAction(
-                icon: Icons.forum_rounded,
+                icon: Icons.people_outline,
                 label: 'Community',
                 color: const Color(0xFF06B6D4),
                 onTap: () => context.go(AppRoutes.community),
