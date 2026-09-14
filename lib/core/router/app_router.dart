@@ -101,6 +101,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.subjects,
             builder: (context, state) => const SubjectsScreen(),
+            routes: [
+              GoRoute(
+                path: ':slug',
+                builder: (context, state) {
+                  final slug = state.pathParameters['slug']!;
+                  return SubjectDetailScreen(slug: slug);
+                },
+                routes: [
+                  GoRoute(
+                    path: 'lessons/:lessonId',
+                    builder: (context, state) {
+                      final slug = state.pathParameters['slug']!;
+                      final lessonId = int.parse(state.pathParameters['lessonId']!);
+                      final topicId = int.tryParse(state.uri.queryParameters['topicId'] ?? '') ?? 0;
+                      return LessonScreen(subjectSlug: slug, lessonId: lessonId, topicId: topicId);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: AppRoutes.quizzes,
@@ -115,22 +135,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const ProfileScreen(),
           ),
         ],
-      ),
-      GoRoute(
-        path: AppRoutes.subjectDetail,
-        builder: (context, state) {
-          final slug = state.pathParameters['slug']!;
-          return SubjectDetailScreen(slug: slug);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.lesson,
-        builder: (context, state) {
-          final slug = state.pathParameters['slug']!;
-          final lessonId = int.parse(state.pathParameters['lessonId']!);
-          final topicId = int.tryParse(state.uri.queryParameters['topicId'] ?? '') ?? 0;
-          return LessonScreen(subjectSlug: slug, lessonId: lessonId, topicId: topicId);
-        },
       ),
       GoRoute(
         path: AppRoutes.quiz,
