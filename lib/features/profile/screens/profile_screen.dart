@@ -245,9 +245,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 onPressed: () => Navigator.pop(context),
                                 child: const Text('Cancel')),
                             TextButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 Navigator.pop(context);
-                                ref.read(authProvider.notifier).logout();
+                                await ref.read(authProvider.notifier).logout();
+                                if (context.mounted) {
+                                  context.go(AppRoutes.login);
+                                }
                               },
                               child: const Text('Sign Out',
                                   style: TextStyle(color: AppColors.error)),
