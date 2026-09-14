@@ -34,14 +34,33 @@ class SubjectsState {
 
 class SubjectsNotifier extends StateNotifier<SubjectsState> {
   final ApiService _apiService;
+  final Ref _ref;
 
-  SubjectsNotifier(this._apiService) : super(const SubjectsState());
+  SubjectsNotifier(this._apiService, this._ref) : super(const SubjectsState());
 
   Future<void> loadSubjects({String? form}) async {
     state = state.copyWith(isLoading: true, clearError: true, selectedForm: form);
     try {
       final subjects = await _apiService.getSubjects(form: form);
-      state = state.copyWith(subjects: subjects, isLoading: false);
+      final enrolledIds = _ref.read(authProvider).user?.enrolledSubjectIds ?? [];
+      final marked = subjects.map((s) {
+        final isEnrolled = enrolledIds.contains(s.id);
+        return SubjectModel(
+          id: s.id,
+          name: s.name,
+          slug: s.slug,
+          description: s.description,
+          icon: s.icon,
+          color: s.color,
+          form: s.form,
+          isCore: s.isCore,
+          topicsCount: s.topicsCount,
+          lessonsCount: s.lessonsCount,
+          progressPercent: s.progressPercent,
+          isEnrolled: isEnrolled,
+        );
+      }).toList();
+      state = state.copyWith(subjects: marked, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -53,7 +72,7 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
 }
 
 final subjectsProvider = StateNotifierProvider<SubjectsNotifier, SubjectsState>((ref) {
-  return SubjectsNotifier(ref.read(apiServiceProvider));
+  return SubjectsNotifier(ref.read(apiServiceProvider), ref);
 });
 
 class TopicsState {

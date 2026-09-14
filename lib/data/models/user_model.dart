@@ -13,6 +13,7 @@ class UserModel {
   final DateTime? subscriptionExpiresAt;
   final int totalPoints;
   final int streak;
+  final List<int> enrolledSubjectIds;
 
   UserModel({
     required this.id,
@@ -69,6 +70,7 @@ class UserModel {
         'subscription_expires_at': subscriptionExpiresAt?.toIso8601String(),
         'total_points': totalPoints,
         'streak': streak,
+        'enrolled_subject_ids': enrolledSubjectIds,
       };
 
   UserModel copyWith({
@@ -86,6 +88,7 @@ class UserModel {
     DateTime? subscriptionExpiresAt,
     int? totalPoints,
     int? streak,
+    List<int>? enrolledSubjectIds,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -102,6 +105,7 @@ class UserModel {
       subscriptionExpiresAt: subscriptionExpiresAt ?? this.subscriptionExpiresAt,
       totalPoints: totalPoints ?? this.totalPoints,
       streak: streak ?? this.streak,
+      enrolledSubjectIds: enrolledSubjectIds ?? this.enrolledSubjectIds,
     );
   }
 }

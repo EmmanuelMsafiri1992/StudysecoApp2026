@@ -30,11 +30,29 @@ class StudySecoApp extends ConsumerStatefulWidget {
   ConsumerState<StudySecoApp> createState() => _StudySecoAppState();
 }
 
-class _StudySecoAppState extends ConsumerState<StudySecoApp> {
+class _StudySecoAppState extends ConsumerState<StudySecoApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Future.microtask(() => ref.read(authProvider.notifier).checkAuth());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final isLoggedIn = ref.read(authProvider).isAuthenticated;
+      if (isLoggedIn) {
+        ref.read(authProvider.notifier).checkAuth();
+      }
+    }
   }
 
   @override
