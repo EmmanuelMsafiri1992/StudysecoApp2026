@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/library_model.dart';
 import '../../../data/services/api_service.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class LibraryState {
   final List<LibraryMaterialModel> materials;

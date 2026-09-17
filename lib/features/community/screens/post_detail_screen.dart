@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/community_model.dart';
 import '../../../data/services/api_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
 
 final postDetailProvider = FutureProvider.family<CommunityPostModel, int>(
