@@ -59,7 +59,7 @@ const _pages = [
   _Page(
     title: 'Study From Anywhere',
     subtitle:
-        'Access your courses from Malawi or abroad. Pay in MWK, USD, ZAR, GBP and more. Join thousands of students.',
+        'Access your lessons from Malawi or abroad, on your phone, whenever you want to study. Join thousands of students.',
     icon: Icons.public_rounded,
     gradient: LinearGradient(
       colors: [Color(0xFFEC4899), Color(0xFFBE185D)],

@@ -129,10 +129,6 @@ class DashboardScreen extends ConsumerWidget {
                             _StreakBadge(streak: user?.streak ?? 0),
                           ],
                         ),
-                        if (user?.hasActiveSubscription == false) ...[
-                          const SizedBox(height: 12),
-                          _PaymentBanner(context: context),
-                        ],
                       ],
                     ),
                   ),
@@ -157,42 +153,6 @@ class DashboardScreen extends ConsumerWidget {
     if (hour < 12) return 'Morning';
     if (hour < 17) return 'Afternoon';
     return 'Evening';
-  }
-}
-
-class _PaymentBanner extends StatelessWidget {
-  final BuildContext context;
-  const _PaymentBanner({required this.context});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.push(AppRoutes.payment),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.accent.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.accent.withOpacity(0.4)),
-        ),
-        child: Row(
-          children: const [
-            Icon(Icons.lock_outline, color: AppColors.accent, size: 15),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Subscribe to unlock all content',
-                style: TextStyle(
-                    color: AppColors.accent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500),
-              ),
-            ),
-            Icon(Icons.chevron_right, color: AppColors.accent, size: 18),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -314,16 +274,10 @@ class _DashboardContent extends ConsumerWidget {
                 onTap: () => context.go(AppRoutes.quizzes),
               ),
               _QuickAction(
-                icon: Icons.payment_outlined,
-                label: 'Payment',
+                icon: Icons.local_library_outlined,
+                label: 'Library',
                 color: AppColors.accent,
-                onTap: () => context.push(AppRoutes.payment),
-              ),
-              _QuickAction(
-                icon: Icons.how_to_reg_outlined,
-                label: 'Enroll',
-                color: const Color(0xFFEC4899),
-                onTap: () => context.push(AppRoutes.enrollment),
+                onTap: () => context.go(AppRoutes.library),
               ),
               _QuickAction(
                 icon: Icons.workspace_premium_outlined,
@@ -336,6 +290,12 @@ class _DashboardContent extends ConsumerWidget {
                 label: 'Community',
                 color: const Color(0xFF06B6D4),
                 onTap: () => context.go(AppRoutes.community),
+              ),
+              _QuickAction(
+                icon: Icons.person_outline,
+                label: 'Profile',
+                color: const Color(0xFFEC4899),
+                onTap: () => context.go(AppRoutes.profile),
               ),
             ],
           ).animate().fadeIn(delay: 300.ms),

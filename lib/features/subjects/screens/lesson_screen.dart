@@ -50,7 +50,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           title: const Text('Lesson'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => context.pop(),
+            onPressed: () => context.canPop()
+                      ? context.pop()
+                      : context.go('/subjects'),
           ),
         ),
         body: Center(
@@ -63,7 +65,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                     size: 64, color: AppColors.primary),
                 const SizedBox(height: 20),
                 const Text(
-                  'Subscription Required',
+                  'Lesson Locked',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -72,13 +74,15 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'You need an active subscription to access lessons.',
+                  'This lesson is not part of your active subjects.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () => context.go('/payment'),
+                  onPressed: () => context.canPop()
+                      ? context.pop()
+                      : context.go('/subjects'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -87,7 +91,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Subscribe Now'),
+                  child: const Text('Go Back'),
                 ),
               ],
             ),
@@ -101,7 +105,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         title: Text(lesson?.title ?? 'Lesson'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () => context.canPop()
+                      ? context.pop()
+                      : context.go('/subjects'),
         ),
         actions: [
           if (!_isCompleted)

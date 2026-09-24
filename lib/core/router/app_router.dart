@@ -15,8 +15,6 @@ import '../../features/subjects/screens/lesson_screen.dart';
 import '../../features/quizzes/screens/quizzes_screen.dart';
 import '../../features/quizzes/screens/quiz_screen.dart';
 import '../../features/quizzes/screens/quiz_result_screen.dart';
-import '../../features/payment/screens/payment_screen.dart';
-import '../../features/enrollment/screens/enrollment_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/post_detail_screen.dart';
 import '../../features/community/screens/create_post_screen.dart';
@@ -46,8 +44,6 @@ class AppRoutes {
   static const String quizzes = '/quizzes';
   static const String quiz = '/quizzes/:quizId';
   static const String quizResult = '/quizzes/:quizId/result';
-  static const String payment = '/payment';
-  static const String enrollment = '/enrollment';
   static const String community = '/community';
   static const String postDetail = '/community/:postId';
   static const String createPost = '/community/new';
@@ -156,14 +152,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           final quizId = int.parse(state.pathParameters['quizId']!);
           return QuizResultScreen(quizId: quizId);
         },
-      ),
-      GoRoute(
-        path: AppRoutes.payment,
-        builder: (context, state) => const PaymentScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.enrollment,
-        builder: (context, state) => const EnrollmentScreen(),
       ),
       GoRoute(
         path: AppRoutes.postDetail,

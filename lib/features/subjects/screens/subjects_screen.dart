@@ -59,7 +59,7 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
                       children: [
                         Expanded(
                           child: GridView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                            padding: const EdgeInsets.all(16),
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
@@ -74,25 +74,6 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
                                   .fadeIn(delay: (index * 50).ms)
                                   .slideY(begin: 0.2, end: 0);
                             },
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: OutlinedButton.icon(
-                            onPressed: () => context.push('/enrollment'),
-                            icon: const Icon(Icons.add_rounded,
-                                color: AppColors.primary),
-                            label: const Text(
-                              'Add More Subjects',
-                              style: TextStyle(color: AppColors.primary),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                              side: const BorderSide(color: AppColors.primary),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
                           ),
                         ),
                       ],
@@ -309,20 +290,8 @@ class _EmptyView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Enroll in subjects to start learning',
+            'Your subjects will appear here once you are enrolled',
             style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () => context.push('/enrollment'),
-            icon: const Icon(Icons.add_rounded, color: AppColors.primary),
-            label: const Text('Enroll in Subjects',
-                style: TextStyle(color: AppColors.primary)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.primary),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
           ),
         ],
       ),

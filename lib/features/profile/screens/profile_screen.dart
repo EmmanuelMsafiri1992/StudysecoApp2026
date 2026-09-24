@@ -280,18 +280,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     color: AppColors.accent,
                     onTap: () => context.push(AppRoutes.achievements),
                   ),
-                  _MenuTile(
-                    icon: Icons.credit_card_rounded,
-                    label: 'Payment History',
-                    color: AppColors.secondary,
-                    onTap: () => context.push(AppRoutes.payment),
-                  ),
-                  _MenuTile(
-                    icon: Icons.school_rounded,
-                    label: 'Enrollment',
-                    color: AppColors.primary,
-                    onTap: () => context.push(AppRoutes.enrollment),
-                  ),
                   const SizedBox(height: 8),
                   const _SectionDivider(label: 'More'),
                   _MenuTile(
