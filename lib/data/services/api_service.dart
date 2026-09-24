@@ -153,7 +153,7 @@ class ApiService {
   }
 
   Future<void> markLessonComplete(int lessonId) async {
-    await _dio.post('/lessons/$lessonId/complete');
+    await _dio.post('/lessons/$lessonId/mark-complete');
   }
 
   // Quizzes
@@ -315,17 +315,15 @@ class ApiService {
     String? subjectSlug,
     String? tag,
   }) async {
-    try {
-      final response = await _dio.get('/community', queryParameters: {
-        'page': page,
-        if (subjectSlug != null) 'subject': subjectSlug,
-        if (tag != null) 'tag': tag,
-      });
-      final list = _extractList(response.data, ['data', 'posts']);
-      if (list != null) {
-        return list.map((p) => CommunityPostModel.fromJson(Map<String, dynamic>.from(p as Map))).toList();
-      }
-    } catch (_) {}
+    final response = await _dio.get('/community', queryParameters: {
+      'page': page,
+      if (subjectSlug != null) 'subject': subjectSlug,
+      if (tag != null) 'tag': tag,
+    });
+    final list = _extractList(response.data, ['data', 'posts']);
+    if (list != null) {
+      return list.map((p) => CommunityPostModel.fromJson(Map<String, dynamic>.from(p as Map))).toList();
+    }
     return [];
   }
 
@@ -363,6 +361,56 @@ class ApiService {
         (response.data['data'] ?? response.data) as Map));
   }
 
+  // Reporting and blocking. Each returns the server's message to show.
+  Future<String> reportPost(int postId, String reason, {String? details}) async {
+    final response = await _dio.post('/community/$postId/report', data: {
+      'reason': reason,
+      if (details != null && details.isNotEmpty) 'details': details,
+    });
+    return response.data['message'] ?? 'Report sent.';
+  }
+
+  Future<String> reportComment(int commentId, String reason, {String? details}) async {
+    final response = await _dio.post('/community/comments/$commentId/report', data: {
+      'reason': reason,
+      if (details != null && details.isNotEmpty) 'details': details,
+    });
+    return response.data['message'] ?? 'Report sent.';
+  }
+
+  Future<String> blockUser(int userId) async {
+    final response = await _dio.post('/users/$userId/block');
+    return response.data['message'] ?? 'User blocked.';
+  }
+
+  Future<void> unblockUser(int userId) async {
+    await _dio.delete('/users/$userId/block');
+  }
+
+  Future<List<BlockedUserModel>> getBlockedUsers() async {
+    final response = await _dio.get('/blocked-users');
+    final list = _extractList(response.data, ['data']) ?? [];
+    return list.map((u) => BlockedUserModel.fromJson(Map<String, dynamic>.from(u as Map))).toList();
+  }
+
+  /// The message the server sent with an error, such as why access was
+  /// refused, or a general one when there is none.
+  static String errorMessage(Object error, [String fallback = 'Something went wrong. Please try again.']) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      if (data is Map && data['message'] is String && (data['message'] as String).isNotEmpty) {
+        final status = error.response?.statusCode ?? 0;
+        if (status < 500) return data['message'];
+      }
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        return 'No connection. Check your internet and try again.';
+      }
+    }
+    return fallback;
+  }
+
   // Library — correct endpoint /library returning data key
   Future<List<LibraryMaterialModel>> getLibraryMaterials({int? subjectId}) async {
     for (int attempt = 0; attempt < 3; attempt++) {
@@ -386,6 +434,7 @@ class ApiService {
       } on DioException catch (e) {
         final status = e.response?.statusCode;
         if (status == 404 || status == 405) return [];
+        if (status == 403) throw Exception(errorMessage(e));
         final isConnectionError = e.type == DioExceptionType.connectionError ||
             e.type == DioExceptionType.receiveTimeout ||
             e.type == DioExceptionType.connectionTimeout;

@@ -40,7 +40,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       final materials = await _api.getLibraryMaterials();
       state = state.copyWith(materials: materials, isLoading: false);
     } catch (e) {
-      final msg = e.toString();
+      final msg = e.toString().replaceFirst('Exception: ', '');
       if (msg.contains('404') || msg.contains('Not Found')) {
         state = state.copyWith(materials: [], isLoading: false);
       } else {

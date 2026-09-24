@@ -108,3 +108,30 @@ class CommentModel {
     );
   }
 }
+
+class BlockedUserModel {
+  final int id;
+  final String name;
+  final String? avatar;
+
+  BlockedUserModel({required this.id, required this.name, this.avatar});
+
+  factory BlockedUserModel.fromJson(Map<String, dynamic> json) {
+    return BlockedUserModel(
+      id: json['id'],
+      name: json['name'] ?? 'User',
+      avatar: json['avatar'],
+    );
+  }
+}
+
+/// Reasons a post or comment can be reported, matching the server's list.
+const reportReasons = <String, String>{
+  'bullying': 'Bullying or harassment',
+  'hate': 'Hate speech',
+  'sexual': 'Sexual or inappropriate content',
+  'violence': 'Violence or threats',
+  'spam': 'Spam or advertising',
+  'cheating': 'Cheating or exam leaks',
+  'other': 'Something else',
+};

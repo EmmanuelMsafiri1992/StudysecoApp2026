@@ -18,6 +18,7 @@ import '../../features/quizzes/screens/quiz_result_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/post_detail_screen.dart';
 import '../../features/community/screens/create_post_screen.dart';
+import '../../features/community/screens/blocked_users_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/achievements/screens/achievements_screen.dart';
 import '../../features/library/screens/library_screen.dart';
@@ -50,6 +51,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String library = '/library';
   static const String achievements = '/achievements';
+  static const String blockedUsers = '/blocked-users';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -154,6 +156,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.createPost,
+        builder: (context, state) => const CreatePostScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.postDetail,
         builder: (context, state) {
           final postId = int.parse(state.pathParameters['postId']!);
@@ -161,8 +167,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: AppRoutes.createPost,
-        builder: (context, state) => const CreatePostScreen(),
+        path: AppRoutes.blockedUsers,
+        builder: (context, state) => const BlockedUsersScreen(),
       ),
       GoRoute(
         path: AppRoutes.achievements,

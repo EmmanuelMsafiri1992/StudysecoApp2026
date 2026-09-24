@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/quiz_model.dart';
+import '../../../data/services/api_service.dart';
 import '../providers/quiz_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -26,15 +27,20 @@ class QuizzesScreen extends ConsumerWidget {
       ),
       body: quizzesAsync.when(
         loading: () => _LoadingList(),
-        error: (_, __) => Center(
+        error: (error, __) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.error_outline_rounded,
                   size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
-              const Text('Failed to load quizzes',
-                  style: TextStyle(color: AppColors.textSecondary)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                    ApiService.errorMessage(error, 'Failed to load quizzes'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary)),
+              ),
               const SizedBox(height: 16),
               TextButton(
                   onPressed: () => ref.refresh(quizzesListProvider(null)),

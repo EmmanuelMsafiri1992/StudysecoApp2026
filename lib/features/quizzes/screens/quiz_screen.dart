@@ -36,6 +36,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(activeQuizProvider);
 
+    ref.listen<String?>(activeQuizProvider.select((s) => s.error), (_, error) {
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error), backgroundColor: AppColors.error));
+      }
+    });
+
     if (state.isCompleted) {
       _timer?.cancel();
       WidgetsBinding.instance.addPostFrameCallback((_) {

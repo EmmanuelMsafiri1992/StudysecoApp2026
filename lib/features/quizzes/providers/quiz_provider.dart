@@ -51,6 +51,7 @@ class ActiveQuizState {
     QuizAttemptModel? result,
     String? error,
     int? elapsedSeconds,
+    bool clearError = false,
   }) {
     return ActiveQuizState(
       quiz: quiz ?? this.quiz,
@@ -60,7 +61,7 @@ class ActiveQuizState {
       isSubmitting: isSubmitting ?? this.isSubmitting,
       isCompleted: isCompleted ?? this.isCompleted,
       result: result ?? this.result,
-      error: error ?? this.error,
+      error: clearError ? null : (error ?? this.error),
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
     );
   }
@@ -72,7 +73,7 @@ class ActiveQuizNotifier extends StateNotifier<ActiveQuizState> {
   ActiveQuizNotifier(this._apiService) : super(const ActiveQuizState());
 
   Future<void> startQuiz(QuizModel quiz) async {
-    state = state.copyWith(quiz: quiz, isLoading: true);
+    state = state.copyWith(quiz: quiz, isLoading: true, clearError: true);
     try {
       final questions = await _apiService.getQuizQuestions(quiz.id);
       state = state.copyWith(
@@ -82,7 +83,9 @@ class ActiveQuizNotifier extends StateNotifier<ActiveQuizState> {
         isCompleted: false,
       );
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+          isLoading: false,
+          error: ApiService.errorMessage(e, 'Could not start the quiz. Please try again.'));
     }
   }
 
@@ -114,7 +117,7 @@ class ActiveQuizNotifier extends StateNotifier<ActiveQuizState> {
   }
 
   Future<void> submitQuiz() async {
-    state = state.copyWith(isSubmitting: true);
+    state = state.copyWith(isSubmitting: true, clearError: true);
     try {
       final answers = <int, int>{};
       for (final q in state.questions) {
@@ -133,7 +136,9 @@ class ActiveQuizNotifier extends StateNotifier<ActiveQuizState> {
         result: attempt,
       );
     } catch (e) {
-      state = state.copyWith(isSubmitting: false, error: e.toString());
+      state = state.copyWith(
+          isSubmitting: false,
+          error: ApiService.errorMessage(e, 'Could not submit your answers. Please try again.'));
     }
   }
 

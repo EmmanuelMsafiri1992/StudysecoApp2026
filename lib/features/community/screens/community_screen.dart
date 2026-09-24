@@ -6,7 +6,9 @@ import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/community_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
+import '../widgets/moderation_menu.dart';
 
 class CommunityScreen extends ConsumerStatefulWidget {
   const CommunityScreen({super.key});
@@ -63,9 +65,13 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                       const Icon(Icons.error_outline_rounded,
                           size: 48, color: AppColors.textMuted),
                       const SizedBox(height: 12),
-                      const Text('Failed to load posts',
-                          style:
-                              TextStyle(color: AppColors.textSecondary)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(state.error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: AppColors.textSecondary)),
+                      ),
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: () => ref
@@ -170,6 +176,18 @@ class PostCard extends ConsumerWidget {
                           fontWeight: FontWeight.w500),
                     ),
                   ),
+                ModerationMenu(
+                  authorId: post.userId,
+                  authorName: post.userName,
+                  onReport: (reason, details) => ref
+                      .read(apiServiceProvider)
+                      .reportPost(post.id, reason, details: details),
+                  onReported: () =>
+                      ref.read(communityProvider.notifier).removePost(post.id),
+                  onBlocked: () => ref
+                      .read(communityProvider.notifier)
+                      .removePostsBy(post.userId),
+                ),
               ],
             ),
             const SizedBox(height: 12),

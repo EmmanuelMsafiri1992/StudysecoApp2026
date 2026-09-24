@@ -73,9 +73,21 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
       state = state.copyWith(
         isLoading: false,
         isLoadingMore: false,
-        error: e.toString(),
+        error: ApiService.errorMessage(e, 'Failed to load posts'),
       );
     }
+  }
+
+  /// Drops a post the user reported, so it disappears straight away.
+  void removePost(int postId) {
+    state = state.copyWith(
+        posts: state.posts.where((post) => post.id != postId).toList());
+  }
+
+  /// Drops every post by a user this user just blocked.
+  void removePostsBy(int userId) {
+    state = state.copyWith(
+        posts: state.posts.where((post) => post.userId != userId).toList());
   }
 
   Future<bool> createPost({

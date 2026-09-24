@@ -7,6 +7,7 @@ import '../../../data/models/community_model.dart';
 import '../../../data/services/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
+import '../widgets/moderation_menu.dart';
 
 final postDetailProvider = FutureProvider.family<CommunityPostModel, int>(
   (ref, postId) => ref.read(apiServiceProvider).getCommunityPost(postId),
@@ -24,6 +25,41 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   final _commentCtrl = TextEditingController();
   bool _isSending = false;
   final List<CommentModel> _localComments = [];
+  // Comments the user reported, and people they blocked, hidden right away.
+  final Set<int> _hiddenCommentIds = {};
+  final Set<int> _hiddenUserIds = {};
+
+  bool _isVisible(CommentModel comment) =>
+      !_hiddenCommentIds.contains(comment.id) &&
+      !_hiddenUserIds.contains(comment.userId);
+
+  /// After reporting the post or blocking its author, leave the screen and
+  /// take the post out of the list too.
+  void _leavePost(CommunityPostModel post, {bool blocked = false}) {
+    final notifier = ref.read(communityProvider.notifier);
+    blocked ? notifier.removePostsBy(post.userId) : notifier.removePost(post.id);
+    if (mounted) context.pop();
+  }
+
+  Widget _comment(CommentModel comment) {
+    return _CommentTile(
+      comment: comment,
+      menu: ModerationMenu(
+        authorId: comment.userId,
+        authorName: comment.userName,
+        contentLabel: 'comment',
+        iconSize: 18,
+        onReport: (reason, details) => ref
+            .read(apiServiceProvider)
+            .reportComment(comment.id, reason, details: details),
+        onReported: () => setState(() => _hiddenCommentIds.add(comment.id)),
+        onBlocked: () {
+          setState(() => _hiddenUserIds.add(comment.userId));
+          ref.read(communityProvider.notifier).removePostsBy(comment.userId);
+        },
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -43,8 +79,14 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
         _localComments.add(comment);
         _isSending = false;
       });
-    } catch (_) {
+    } catch (e) {
       setState(() => _isSending = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ApiService.errorMessage(e, 'Could not post your comment.')),
+          backgroundColor: AppColors.error,
+        ));
+      }
     }
   }
 
@@ -64,16 +106,20 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
         body: const Center(
             child: CircularProgressIndicator(color: AppColors.primary)),
       ),
-      error: (_, __) => Scaffold(
+      error: (error, __) => Scaffold(
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => context.pop(),
           ),
         ),
-        body: const Center(
-            child: Text('Failed to load post',
-                style: TextStyle(color: AppColors.textSecondary))),
+        body: Center(
+            child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(ApiService.errorMessage(error, 'Failed to load post'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary)),
+        )),
       ),
       data: (post) => Scaffold(
         appBar: AppBar(
@@ -92,6 +138,16 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
               ),
               onPressed: () =>
                   ref.read(communityProvider.notifier).toggleLike(post.id),
+            ),
+            ModerationMenu(
+              authorId: post.userId,
+              authorName: post.userName,
+              iconSize: 22,
+              onReport: (reason, details) => ref
+                  .read(apiServiceProvider)
+                  .reportPost(post.id, reason, details: details),
+              onReported: () => _leavePost(post),
+              onBlocked: () => _leavePost(post, blocked: true),
             ),
           ],
         ),
@@ -113,16 +169,16 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Comments (${post.commentsCount + _localComments.length})',
+                    'Comments (${post.comments.where(_isVisible).length + _localComments.length})',
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 12),
-                  ...post.comments.map((c) => _CommentTile(comment: c)),
-                  ..._localComments.map((c) => _CommentTile(comment: c)),
-                  if (post.comments.isEmpty && _localComments.isEmpty)
+                  ...post.comments.where(_isVisible).map(_comment),
+                  ..._localComments.map(_comment),
+                  if (!post.comments.any(_isVisible) && _localComments.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 20),
                       child: Center(
@@ -199,7 +255,8 @@ class _PostHeader extends StatelessWidget {
 
 class _CommentTile extends StatelessWidget {
   final CommentModel comment;
-  const _CommentTile({required this.comment});
+  final Widget menu;
+  const _CommentTile({required this.comment, required this.menu});
 
   @override
   Widget build(BuildContext context) {
@@ -237,6 +294,7 @@ class _CommentTile extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 11, color: AppColors.textMuted),
               ),
+              SizedBox(width: 28, height: 24, child: menu),
             ],
           ),
           const SizedBox(height: 8),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -280,19 +281,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     color: AppColors.accent,
                     onTap: () => context.push(AppRoutes.achievements),
                   ),
+                  _MenuTile(
+                    icon: Icons.block_rounded,
+                    label: 'Blocked users',
+                    color: AppColors.error,
+                    onTap: () => context.push(AppRoutes.blockedUsers),
+                  ),
                   const SizedBox(height: 8),
                   const _SectionDivider(label: 'More'),
                   _MenuTile(
-                    icon: Icons.help_outline_rounded,
-                    label: 'Help & Support',
+                    icon: Icons.description_outlined,
+                    label: 'Terms & Community Rules',
                     color: const Color(0xFF06B6D4),
-                    onTap: () {},
+                    onTap: () => launchUrl(Uri.parse('https://studyseco.com/terms'),
+                        mode: LaunchMode.externalApplication),
                   ),
                   _MenuTile(
                     icon: Icons.privacy_tip_rounded,
                     label: 'Privacy Policy',
                     color: AppColors.textMuted,
-                    onTap: () {},
+                    onTap: () => launchUrl(Uri.parse('https://studyseco.com/privacy'),
+                        mode: LaunchMode.externalApplication),
                   ),
                   const SizedBox(height: 16),
                   AppButton(
