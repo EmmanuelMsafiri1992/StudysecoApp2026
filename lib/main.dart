@@ -50,7 +50,7 @@ class _StudySecoAppState extends ConsumerState<StudySecoApp>
     if (state == AppLifecycleState.resumed) {
       final isLoggedIn = ref.read(authProvider).isAuthenticated;
       if (isLoggedIn) {
-        ref.read(authProvider.notifier).checkAuth();
+        ref.read(authProvider.notifier).refreshProfileSilently();
       }
     }
   }

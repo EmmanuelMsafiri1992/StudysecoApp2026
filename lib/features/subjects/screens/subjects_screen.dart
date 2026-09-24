@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/subject_model.dart';
 import '../providers/subjects_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 class SubjectsScreen extends ConsumerStatefulWidget {
@@ -16,129 +16,87 @@ class SubjectsScreen extends ConsumerStatefulWidget {
 }
 
 class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
-  String? _selectedForm;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(subjectsProvider.notifier).loadSubjects();
+      final form = ref.read(authProvider).user?.form;
+      ref.read(subjectsProvider.notifier).loadSubjects(form: form);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(subjectsProvider);
+    final userForm = ref.watch(authProvider).user?.form;
+
+    String normalizeForm(String v) {
+      final s = v.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+      final digits = RegExp(r'\d+').firstMatch(s)?.group(0);
+      return digits != null ? 'form$digits' : s;
+    }
+    final enrolled = state.subjects.where((s) {
+      if (!s.isEnrolled) return false;
+      if (userForm != null && userForm.isNotEmpty && s.form.isNotEmpty) {
+        return normalizeForm(s.form) == normalizeForm(userForm);
+      }
+      return true;
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subjects'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {},
-          ),
-        ],
+        title: const Text('My Subjects'),
       ),
-      body: Column(
-        children: [
-          _FormFilter(
-            selected: _selectedForm,
-            onSelect: (form) {
-              setState(() => _selectedForm = form);
-              ref.read(subjectsProvider.notifier).filterByForm(form);
-            },
-          ),
-          Expanded(
-            child: state.isLoading
-                ? _LoadingGrid()
-                : state.error != null
-                    ? _ErrorView(
-                        onRetry: () => ref
-                            .read(subjectsProvider.notifier)
-                            .loadSubjects(form: _selectedForm))
-                    : Builder(builder: (context) {
-                        final enrolled = state.subjects
-                            .where((s) => s.isEnrolled)
-                            .toList();
-                        final displayList = enrolled.isEmpty
-                            ? state.subjects
-                            : enrolled;
-                        return displayList.isEmpty
-                            ? const _EmptyView()
-                            : GridView.builder(
-                                padding: const EdgeInsets.all(16),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 12,
-                                  crossAxisSpacing: 12,
-                                  childAspectRatio: 0.85,
-                                ),
-                                itemCount: displayList.length,
-                                itemBuilder: (context, index) {
-                                  return SubjectCard(
-                                    subject: displayList[index],
-                                  )
-                                      .animate()
-                                      .fadeIn(delay: (index * 50).ms)
-                                      .slideY(begin: 0.2, end: 0);
-                                },
-                              );
-                      }),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FormFilter extends StatelessWidget {
-  final String? selected;
-  final void Function(String?) onSelect;
-
-  const _FormFilter({required this.selected, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    final forms = ['All', ...AppConstants.forms];
-    return SizedBox(
-      height: 48,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: forms.length,
-        itemBuilder: (context, index) {
-          final form = forms[index];
-          final isAll = form == 'All';
-          final isSelected =
-              (isAll && selected == null) || (!isAll && selected == form);
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(form),
-              selected: isSelected,
-              onSelected: (_) => onSelect(isAll ? null : form),
-              backgroundColor: AppColors.surfaceVariant,
-              selectedColor: AppColors.primary.withOpacity(0.2),
-              checkmarkColor: AppColors.primary,
-              labelStyle: TextStyle(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.textSecondary,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 13,
-              ),
-              side: BorderSide(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.border,
-              ),
-            ),
-          );
-        },
-      ),
+      body: state.isLoading
+          ? _LoadingGrid()
+          : state.error != null && enrolled.isEmpty
+              ? _ErrorView(
+                  onRetry: () =>
+                      ref.read(subjectsProvider.notifier).loadSubjects(form: userForm))
+              : enrolled.isEmpty
+                  ? _EmptyView()
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: GridView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              childAspectRatio: 0.85,
+                            ),
+                            itemCount: enrolled.length,
+                            itemBuilder: (context, index) {
+                              return SubjectCard(subject: enrolled[index])
+                                  .animate()
+                                  .fadeIn(delay: (index * 50).ms)
+                                  .slideY(begin: 0.2, end: 0);
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: OutlinedButton.icon(
+                            onPressed: () => context.push('/enrollment'),
+                            icon: const Icon(Icons.add_rounded,
+                                color: AppColors.primary),
+                            label: const Text(
+                              'Add More Subjects',
+                              style: TextStyle(color: AppColors.primary),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                              side: const BorderSide(color: AppColors.primary),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
     );
   }
 }
@@ -211,7 +169,7 @@ class SubjectCard extends StatelessWidget {
               style: const TextStyle(
                   fontSize: 12, color: AppColors.textMuted),
             ),
-            if (subject.isEnrolled && subject.progressPercent != null) ...[
+            if (subject.progressPercent != null) ...[
               const SizedBox(height: 8),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
@@ -336,14 +294,36 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.book_outlined, size: 64, color: AppColors.textMuted),
-          SizedBox(height: 12),
-          Text('No subjects found',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+          const Icon(Icons.book_outlined, size: 64, color: AppColors.textMuted),
+          const SizedBox(height: 12),
+          const Text(
+            'No subjects enrolled yet',
+            style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Enroll in subjects to start learning',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: () => context.push('/enrollment'),
+            icon: const Icon(Icons.add_rounded, color: AppColors.primary),
+            label: const Text('Enroll in Subjects',
+                style: TextStyle(color: AppColors.primary)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.primary),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
         ],
       ),
     );

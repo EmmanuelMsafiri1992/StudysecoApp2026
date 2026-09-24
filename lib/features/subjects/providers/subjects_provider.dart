@@ -41,7 +41,7 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
   Future<void> loadSubjects({String? form}) async {
     state = state.copyWith(isLoading: true, clearError: true, selectedForm: form);
     try {
-      final subjects = await _apiService.getSubjects(form: form);
+      final subjects = await _apiService.getEnrollmentSubjects(gradeLevel: form);
       final enrolledIds = _ref.read(authProvider).user?.enrolledSubjectIds ?? [];
       final marked = subjects.map((s) {
         final isEnrolled = enrolledIds.contains(s.id);
@@ -66,13 +66,31 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
     }
   }
 
+  Future<void> loadPublicSubjects({String? form}) async {
+    await loadSubjects(form: form);
+  }
+
   void filterByForm(String? form) {
     loadSubjects(form: form);
   }
 }
 
 final subjectsProvider = StateNotifierProvider<SubjectsNotifier, SubjectsState>((ref) {
-  return SubjectsNotifier(ref.read(apiServiceProvider), ref);
+  final notifier = SubjectsNotifier(ref.read(apiServiceProvider), ref);
+
+  ref.listen(authProvider, (previous, next) {
+    final prevUserId = previous?.user?.id;
+    final nextUserId = next.user?.id;
+    final prevForm = previous?.user?.form;
+    final nextForm = next.user?.form;
+    final userJustLoggedIn = prevUserId == null && nextUserId != null;
+    final formChanged = nextForm != prevForm;
+    if (userJustLoggedIn || (formChanged && next.user != null)) {
+      notifier.loadSubjects(form: nextForm);
+    }
+  });
+
+  return notifier;
 });
 
 class TopicsState {

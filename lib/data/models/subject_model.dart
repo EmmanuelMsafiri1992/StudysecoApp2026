@@ -27,6 +27,16 @@ class SubjectModel {
     this.isEnrolled = false,
   });
 
+  static String _resolveForm(Map<String, dynamic> json) {
+    final raw = json['form']?.toString() ??
+        json['grade_level']?.toString() ??
+        json['class']?.toString();
+    if (raw != null && raw.isNotEmpty) return raw;
+    final formId = json['form_id'] ?? json['grade_id'] ?? json['class_id'];
+    if (formId != null) return 'Form $formId';
+    return '';
+  }
+
   factory SubjectModel.fromJson(Map<String, dynamic> json) {
     final slug = json['slug'] ?? json['code'] ?? json['id'].toString();
     return SubjectModel(
@@ -36,7 +46,7 @@ class SubjectModel {
       description: json['description'],
       icon: json['icon'] ?? json['cover_image'],
       color: json['color'],
-      form: json['form'] ?? json['grade_level'] ?? 'Form 1',
+      form: _resolveForm(json),
       isCore: json['is_core'] ?? json['is_compulsory'] ?? false,
       topicsCount: json['topics_count'] ?? 0,
       lessonsCount: json['lessons_count'] ?? 0,

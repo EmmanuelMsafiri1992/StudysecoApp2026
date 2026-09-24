@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/services/api_service.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/payment/providers/payment_provider.dart';
 import '../../../features/subjects/providers/subjects_provider.dart';
 import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/app_text_field.dart';
 
 class EnrollmentScreen extends ConsumerStatefulWidget {
   const EnrollmentScreen({super.key});
@@ -20,32 +18,36 @@ class EnrollmentScreen extends ConsumerStatefulWidget {
 class _EnrollmentScreenState extends ConsumerState<EnrollmentScreen> {
   int _step = 0;
   final Set<int> _selectedSubjectIds = {};
-  final _formKey = GlobalKey<FormState>();
-  String _selectedForm = 'Form 1';
-  final _schoolCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  bool _isLoading = false;
+  String? _loadedForForm;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(subjectsProvider.notifier).loadSubjects();
+      _loadSubjectsForUser();
     });
   }
 
-  @override
-  void dispose() {
-    _schoolCtrl.dispose();
-    _phoneCtrl.dispose();
-    super.dispose();
+  void _loadSubjectsForUser() {
+    final user = ref.read(authProvider).user;
+    final form = user?.form;
+    if (_loadedForForm != form) {
+      _loadedForForm = form;
+      ref.read(subjectsProvider.notifier).loadSubjects(form: form);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+
+    if (user?.form != null && user!.form != _loadedForForm) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadSubjectsForUser());
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enroll'),
+        title: const Text('Add Subjects'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _step > 0
@@ -57,47 +59,35 @@ class _EnrollmentScreenState extends ConsumerState<EnrollmentScreen> {
         children: [
           _StepIndicator(step: _step),
           Expanded(
-            child: [
-              _SubjectSelectionStep(
-                selectedIds: _selectedSubjectIds,
-                onToggle: (id) {
-                  setState(() {
-                    if (_selectedSubjectIds.contains(id)) {
-                      _selectedSubjectIds.remove(id);
-                    } else {
-                      _selectedSubjectIds.add(id);
-                    }
-                  });
-                },
-              ),
-              _PersonalDetailsStep(
-                formKey: _formKey,
-                selectedForm: _selectedForm,
-                schoolCtrl: _schoolCtrl,
-                phoneCtrl: _phoneCtrl,
-                onFormChanged: (v) => setState(() => _selectedForm = v!),
-              ),
-              _SummaryStep(
-                selectedSubjectIds: _selectedSubjectIds,
-                selectedForm: _selectedForm,
-                school: _schoolCtrl.text,
-                phone: _phoneCtrl.text,
-              ),
-            ][_step],
+            child: _step == 0
+                ? _SubjectSelectionStep(
+                    userForm: user?.form,
+                    selectedIds: _selectedSubjectIds,
+                    onToggle: (id) {
+                      setState(() {
+                        if (_selectedSubjectIds.contains(id)) {
+                          _selectedSubjectIds.remove(id);
+                        } else {
+                          _selectedSubjectIds.add(id);
+                        }
+                      });
+                    },
+                  )
+                : _ConfirmStep(
+                    selectedSubjectIds: _selectedSubjectIds,
+                    user: user,
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.all(20),
-            child: _step == 2
+            child: _step == 0
                 ? GradientButton(
-                    label: 'Complete Enrollment',
-                    onTap: _enroll,
-                    isLoading: _isLoading,
+                    label: 'Continue (${_selectedSubjectIds.length} selected)',
+                    onTap: _next,
                   )
                 : GradientButton(
-                    label: _step == 0
-                        ? 'Continue (${_selectedSubjectIds.length} selected)'
-                        : 'Next',
-                    onTap: _next,
+                    label: 'Confirm & Proceed to Payment',
+                    onTap: _enroll,
                   ),
           ),
         ],
@@ -106,51 +96,21 @@ class _EnrollmentScreenState extends ConsumerState<EnrollmentScreen> {
   }
 
   void _next() {
-    if (_step == 0) {
-      if (_selectedSubjectIds.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Please select at least one subject'),
-              backgroundColor: AppColors.error),
-        );
-        return;
-      }
-      setState(() => _step = 1);
-    } else if (_step == 1) {
-      if (!_formKey.currentState!.validate()) return;
-      setState(() => _step = 2);
+    if (_selectedSubjectIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please select at least one subject'),
+            backgroundColor: AppColors.error),
+      );
+      return;
     }
+    setState(() => _step = 1);
   }
 
-  Future<void> _enroll() async {
-    setState(() => _isLoading = true);
-    try {
-      await ref.read(apiServiceProvider).createEnrollment(
-        subjectIds: _selectedSubjectIds.toList(),
-        personalDetails: {
-          'form': _selectedForm,
-          'school_name': _schoolCtrl.text.trim(),
-          'phone': _phoneCtrl.text.trim(),
-        },
-      );
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => _SuccessDialog(),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Enrollment failed: ${e.toString()}'),
-              backgroundColor: AppColors.error),
-        );
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  void _enroll() {
+    ref.read(pendingEnrollmentSubjectsProvider.notifier).state =
+        _selectedSubjectIds.toList();
+    if (mounted) context.go('/payment');
   }
 }
 
@@ -160,7 +120,7 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['Subjects', 'Details', 'Summary'];
+    const labels = ['Select', 'Confirm'];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
@@ -176,8 +136,7 @@ class _StepIndicator extends StatelessWidget {
                   Expanded(
                     child: Container(
                       height: 2,
-                      color:
-                          isDone ? AppColors.primary : AppColors.divider,
+                      color: isDone ? AppColors.primary : AppColors.divider,
                     ),
                   ),
                 Column(
@@ -214,8 +173,7 @@ class _StepIndicator extends StatelessWidget {
                         )),
                   ],
                 ),
-                if (i < labels.length - 1)
-                  const Expanded(child: SizedBox()),
+                if (i < labels.length - 1) const Expanded(child: SizedBox()),
               ],
             ),
           );
@@ -226,10 +184,12 @@ class _StepIndicator extends StatelessWidget {
 }
 
 class _SubjectSelectionStep extends ConsumerWidget {
+  final String? userForm;
   final Set<int> selectedIds;
   final void Function(int) onToggle;
 
   const _SubjectSelectionStep({
+    required this.userForm,
     required this.selectedIds,
     required this.onToggle,
   });
@@ -243,59 +203,171 @@ class _SubjectSelectionStep extends ConsumerWidget {
           child: CircularProgressIndicator(color: AppColors.primary));
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    String normalizeForm(String f) {
+      final s = f.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+      final digits = RegExp(r'\d+').firstMatch(s)?.group(0);
+      return digits != null ? 'form$digits' : s;
+    }
+
+    final anyHasForm = state.subjects.any((s) => s.form.isNotEmpty);
+    final formSubjects = (userForm != null && userForm!.isNotEmpty && anyHasForm)
+        ? state.subjects.where((s) => normalizeForm(s.form) == normalizeForm(userForm!)).toList()
+        : state.subjects;
+    final enrolled = formSubjects.where((s) => s.isEnrolled).toList();
+    final unenrolled = formSubjects.where((s) => !s.isEnrolled).toList();
+
+    if (state.error != null && formSubjects.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off_rounded, size: 48, color: AppColors.textMuted),
+            const SizedBox(height: 12),
+            const Text('Failed to load subjects',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () => ref.read(subjectsProvider.notifier).loadSubjects(form: userForm),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (formSubjects.isEmpty && !state.isLoading && state.error == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_outline_rounded,
+                size: 56, color: AppColors.secondary),
+            const SizedBox(height: 12),
+            Text(
+              userForm != null
+                  ? 'No subjects available for $userForm'
+                  : 'No subjects available',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
+            ),
+            if (userForm == null) ...[
+              const SizedBox(height: 8),
               const Text(
-                'Select Your Subjects',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
-              ),
-              Text(
-                '${selectedIds.length} selected',
-                style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500),
+                'Please update your profile with your current form.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
               ),
             ],
-          ),
+          ],
         ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          userForm != null ? 'Subjects for $userForm' : 'Select Subjects',
+          style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary),
+        ),
+        Text(
+          '${selectedIds.length} selected',
+          style: const TextStyle(
+              color: AppColors.primary, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 16),
+        if (enrolled.isNotEmpty) ...[
+          const Text(
+            'Already Enrolled',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+                letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
               childAspectRatio: 2.2,
             ),
-            itemCount: state.subjects.length,
+            itemCount: enrolled.length,
             itemBuilder: (context, index) {
-              final subject = state.subjects[index];
+              final subject = enrolled[index];
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: AppColors.secondary, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        subject.name,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.secondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+        ],
+        if (unenrolled.isNotEmpty) ...[
+          const Text(
+            'Available to Add',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+                letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 8),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.2,
+            ),
+            itemCount: unenrolled.length,
+            itemBuilder: (context, index) {
+              final subject = unenrolled[index];
               final isSelected = selectedIds.contains(subject.id);
               return GestureDetector(
                 onTap: () => onToggle(subject.id),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.primary.withOpacity(0.15)
                         : AppColors.cardBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.border,
+                      color: isSelected ? AppColors.primary : AppColors.border,
                       width: isSelected ? 1.5 : 1,
                     ),
                   ),
@@ -305,9 +377,7 @@ class _SubjectSelectionStep extends ConsumerWidget {
                         isSelected
                             ? Icons.check_box_rounded
                             : Icons.check_box_outline_blank_rounded,
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textMuted,
+                        color: isSelected ? AppColors.primary : AppColors.textMuted,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
@@ -331,123 +401,33 @@ class _SubjectSelectionStep extends ConsumerWidget {
               ).animate().fadeIn(delay: (index * 30).ms);
             },
           ),
-        ),
+        ] else
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'You are already enrolled in all available subjects for your class.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+          ),
       ],
     );
   }
 }
 
-class _PersonalDetailsStep extends StatelessWidget {
-  final GlobalKey<FormState> formKey;
-  final String selectedForm;
-  final TextEditingController schoolCtrl;
-  final TextEditingController phoneCtrl;
-  final void Function(String?) onFormChanged;
-
-  const _PersonalDetailsStep({
-    required this.formKey,
-    required this.selectedForm,
-    required this.schoolCtrl,
-    required this.phoneCtrl,
-    required this.onFormChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Your Details',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Current Form',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.inputBg,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: DropdownButton<String>(
-                    value: selectedForm,
-                    isExpanded: true,
-                    underline: const SizedBox(),
-                    dropdownColor: AppColors.surface,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary, fontSize: 15),
-                    items: AppConstants.forms
-                        .map((f) =>
-                            DropdownMenuItem(value: f, child: Text(f)))
-                        .toList(),
-                    onChanged: onFormChanged,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'School Name (optional)',
-              hint: 'St. Michael Secondary School',
-              controller: schoolCtrl,
-              textCapitalization: TextCapitalization.words,
-              prefixIcon: const Icon(Icons.business_rounded,
-                  color: AppColors.textMuted, size: 20),
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Phone Number (optional)',
-              hint: '+265 999 000 000',
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              prefixIcon: const Icon(Icons.phone_rounded,
-                  color: AppColors.textMuted, size: 20),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryStep extends ConsumerWidget {
+class _ConfirmStep extends ConsumerWidget {
   final Set<int> selectedSubjectIds;
-  final String selectedForm;
-  final String school;
-  final String phone;
+  final dynamic user;
 
-  const _SummaryStep({
+  const _ConfirmStep({
     required this.selectedSubjectIds,
-    required this.selectedForm,
-    required this.school,
-    required this.phone,
+    required this.user,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subjects = ref.watch(subjectsProvider).subjects;
-    final selected = subjects
-        .where((s) => selectedSubjectIds.contains(s.id))
-        .toList();
-    final user = ref.watch(authProvider).user;
+    final selected =
+        subjects.where((s) => selectedSubjectIds.contains(s.id)).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -455,7 +435,7 @@ class _SummaryStep extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Enrollment Summary',
+            'Confirm Subjects',
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -468,24 +448,13 @@ class _SummaryStep extends ConsumerWidget {
             icon: Icons.person_rounded,
           ),
           _SummaryCard(
-            label: 'Email',
-            value: user?.email ?? '',
-            icon: Icons.email_rounded,
-          ),
-          _SummaryCard(
             label: 'Form',
-            value: selectedForm,
+            value: user?.form ?? '',
             icon: Icons.class_rounded,
           ),
-          if (school.isNotEmpty)
-            _SummaryCard(
-              label: 'School',
-              value: school,
-              icon: Icons.business_rounded,
-            ),
           const SizedBox(height: 16),
           const Text(
-            'Selected Subjects',
+            'Subjects to Add',
             style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -513,17 +482,17 @@ class _SummaryStep extends ConsumerWidget {
             decoration: BoxDecoration(
               color: AppColors.accent.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.accent.withOpacity(0.3)),
+              border:
+                  Border.all(color: AppColors.accent.withOpacity(0.3)),
             ),
-            child: Row(
-              children: const [
+            child: const Row(
+              children: [
                 Icon(Icons.info_outline_rounded,
                     color: AppColors.accent, size: 18),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Your account will be created. Payment required to access content.',
+                    'Payment is required to access content for these subjects.',
                     style: TextStyle(
                         color: AppColors.accent,
                         fontSize: 12,
@@ -576,60 +545,6 @@ class _SummaryCard extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary)),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SuccessDialog extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return AlertDialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 8),
-          Container(
-            width: 72,
-            height: 72,
-            decoration: const BoxDecoration(
-              gradient: AppColors.secondaryGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.check_rounded,
-                color: Colors.white, size: 36),
-          ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
-          const SizedBox(height: 16),
-          const Text('Enrolled!',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 8),
-          const Text(
-            'You\'re enrolled. Complete your payment to access all content.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          ),
-          const SizedBox(height: 20),
-          GradientButton(
-            label: 'Make Payment',
-            onTap: () {
-              Navigator.pop(context);
-              context.go('/payment');
-            },
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/dashboard');
-            },
-            child: const Text('Pay Later'),
           ),
         ],
       ),

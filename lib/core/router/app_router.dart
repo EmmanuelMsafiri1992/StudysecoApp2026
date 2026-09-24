@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -203,9 +204,38 @@ class _MainShellState extends State<MainShell> {
     AppRoutes.profile,
   ];
 
+  DateTime? _lastBackPress;
+
+  Future<bool> _onWillPop(BuildContext context) async {
+    if (_currentIndex != 0) {
+      setState(() => _currentIndex = 0);
+      context.go(AppRoutes.dashboard);
+      return false;
+    }
+    final now = DateTime.now();
+    if (_lastBackPress == null ||
+        now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    SystemNavigator.pop();
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _onWillPop(context);
+      },
+      child: Scaffold(
       body: widget.child,
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
@@ -261,6 +291,7 @@ class _MainShellState extends State<MainShell> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -289,23 +320,25 @@ class _NavItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 64,
+        width: 52,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
               color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
-              size: 22,
+              size: 20,
             ),
             const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                 color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ],
         ),

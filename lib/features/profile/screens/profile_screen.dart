@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/providers/auth_provider.dart';
@@ -19,12 +20,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditing = false;
   final _nameCtrl = TextEditingController();
   final _schoolCtrl = TextEditingController();
+  final _countryCtrl = TextEditingController();
+  String? _selectedCurrency;
+  int? _lastUserId;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _schoolCtrl.dispose();
+    _countryCtrl.dispose();
     super.dispose();
+  }
+
+  void _initControllers(user) {
+    if (user == null) return;
+    if (_lastUserId == null || !_isEditing) {
+      _nameCtrl.text = user.name;
+      _schoolCtrl.text = user.schoolName ?? '';
+      _countryCtrl.text = user.country ?? '';
+      _selectedCurrency = (user.currency != null && user.currency!.isNotEmpty)
+          ? user.currency!
+          : 'MWK';
+      _lastUserId = user.id;
+    }
+  }
+
+  Widget _buildCurrencyDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Currency',
+          style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: AppColors.inputBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: DropdownButton<String>(
+            value: _selectedCurrency ?? 'MWK',
+            isExpanded: true,
+            underline: const SizedBox(),
+            dropdownColor: AppColors.surface,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+            items: AppConstants.currencies
+                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                .toList(),
+            onChanged: (v) => setState(() => _selectedCurrency = v),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authProvider.notifier).refreshProfileSilently();
+    });
   }
 
   @override
@@ -32,10 +93,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
-    if (user != null && _nameCtrl.text.isEmpty) {
-      _nameCtrl.text = user.name;
-      _schoolCtrl.text = user.schoolName ?? '';
-    }
+    _initControllers(user);
 
     return Scaffold(
       appBar: AppBar(
@@ -46,7 +104,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _isEditing ? Icons.close_rounded : Icons.edit_rounded,
               color: AppColors.textSecondary,
             ),
-            onPressed: () => setState(() => _isEditing = !_isEditing),
+            onPressed: () {
+              if (_isEditing) {
+                _lastUserId = null;
+                _initControllers(user);
+              }
+              setState(() => _isEditing = !_isEditing);
+            },
           ),
         ],
       ),
@@ -154,6 +218,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       controller: _schoolCtrl,
                       textCapitalization: TextCapitalization.words,
                     ),
+                    const SizedBox(height: 16),
+                    AppTextField(
+                      label: 'Country',
+                      controller: _countryCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      prefixIcon: const Icon(Icons.location_on_rounded,
+                          color: AppColors.textMuted, size: 20),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildCurrencyDropdown(),
                     const SizedBox(height: 20),
                     GradientButton(
                       label: 'Save Changes',
@@ -161,6 +235,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         await ref.read(authProvider.notifier).updateProfile({
                           'name': _nameCtrl.text.trim(),
                           'school_name': _schoolCtrl.text.trim(),
+                          'country': _countryCtrl.text.trim(),
+                          'currency': _selectedCurrency ?? 'MWK',
                         });
                         setState(() => _isEditing = false);
                       },
@@ -171,23 +247,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _InfoCard(
                     icon: Icons.class_rounded,
                     label: 'Current Form',
-                    value: user?.form ?? '-',
+                    value: user?.form?.isNotEmpty == true ? user!.form! : '-',
                   ),
                   _InfoCard(
                     icon: Icons.location_on_rounded,
                     label: 'Country',
-                    value: user?.country ?? '-',
+                    value: user?.country?.isNotEmpty == true
+                        ? user!.country!
+                        : '-',
                   ),
                   _InfoCard(
                     icon: Icons.currency_exchange_rounded,
                     label: 'Currency',
-                    value: user?.currency ?? '-',
+                    value: user?.currency?.isNotEmpty == true
+                        ? user!.currency!
+                        : 'MWK',
                   ),
-                  if (user?.hasActiveSubscription == true &&
-                      user?.subscriptionExpiresAt != null)
+                  if (user?.subscriptionExpiresAt != null)
                     _InfoCard(
                       icon: Icons.calendar_today_rounded,
-                      label: 'Subscription Expires',
+                      label: user?.hasActiveSubscription == true
+                          ? 'Subscription Expires'
+                          : 'Subscription Expired',
                       value:
                           '${user!.subscriptionExpiresAt!.day}/${user.subscriptionExpiresAt!.month}/${user.subscriptionExpiresAt!.year}',
                     ),

@@ -104,6 +104,48 @@ class AccessDurationModel {
         return [10, 18, 30];
     }
   }
+
+  static double _perSubjectPerMonth(String currency) {
+    switch (currency.toUpperCase()) {
+      case 'MWK': return 12500;
+      case 'USD': return 8;
+      case 'ZAR': return 150;
+      case 'GBP': return 6;
+      case 'EUR': return 7;
+      case 'KES': return 1050;
+      case 'ZMW': return 200;
+      case 'GHS': return 120;
+      case 'NGN': return 12000;
+      default: return 8;
+    }
+  }
+
+  static List<AccessDurationModel> getDefaultsForSubjects(String currency, int subjectCount) {
+    if (subjectCount <= 0) return getDefaults(currency);
+    final rate = _perSubjectPerMonth(currency);
+    return [
+      AccessDurationModel(
+        months: 4,
+        label: '4 Months',
+        price: rate * 4 * subjectCount,
+        currency: currency,
+      ),
+      AccessDurationModel(
+        months: 8,
+        label: '8 Months',
+        price: rate * 8 * subjectCount,
+        currency: currency,
+        badge: 'Popular',
+      ),
+      AccessDurationModel(
+        months: 12,
+        label: '12 Months',
+        price: rate * 12 * subjectCount,
+        currency: currency,
+        badge: 'Best Value',
+      ),
+    ];
+  }
 }
 
 class PaymentModel {

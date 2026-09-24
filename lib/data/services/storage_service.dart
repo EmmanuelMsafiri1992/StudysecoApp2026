@@ -47,6 +47,11 @@ class StorageService {
   static Future<void> clearAll() async {
     await _secureStorage.deleteAll();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove(AppConstants.userKey);
+    await prefs.remove('user_form');
+    await prefs.remove('user_country');
+    await prefs.remove('user_currency');
+    await prefs.remove('user_phone');
+    await prefs.remove('enrolled_subject_ids');
   }
 }

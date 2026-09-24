@@ -6,11 +6,24 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/library_model.dart';
 import '../providers/library_provider.dart';
 
-class LibraryScreen extends ConsumerWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(libraryProvider.notifier).load();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(libraryProvider);
 
     return Scaffold(
@@ -25,8 +38,11 @@ class LibraryScreen extends ConsumerWidget {
       ),
       body: state.isLoading
           ? _LoadingList()
-          : state.error != null && state.materials.isEmpty
-              ? _ErrorView(onRetry: () => ref.read(libraryProvider.notifier).load())
+          : state.error != null
+              ? _ErrorView(
+                  error: state.error!,
+                  onRetry: () => ref.read(libraryProvider.notifier).load(),
+                )
               : state.materials.isEmpty
                   ? _EmptyView()
                   : RefreshIndicator(
@@ -202,23 +218,41 @@ class _EmptyView extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
+  final String error;
   final VoidCallback onRetry;
-  const _ErrorView({required this.onRetry});
+  const _ErrorView({required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline_rounded,
-              size: 48, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          const Text('Failed to load library',
-              style: TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(height: 16),
-          TextButton(onPressed: onRetry, child: const Text('Retry')),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off_rounded,
+                size: 48, color: AppColors.textMuted),
+            const SizedBox(height: 12),
+            const Text('Failed to load library',
+                style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            Text(
+              error.length > 120 ? '${error.substring(0, 120)}…' : error,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AppColors.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }

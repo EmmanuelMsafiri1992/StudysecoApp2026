@@ -41,6 +41,61 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       }
     }
 
+    final user = ref.watch(authProvider).user;
+    final hasAccess = user?.hasActiveSubscription == true;
+
+    if (!hasAccess) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Lesson'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline_rounded,
+                    size: 64, color: AppColors.primary),
+                const SizedBox(height: 20),
+                const Text(
+                  'Subscription Required',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'You need an active subscription to access lessons.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => context.go('/payment'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Subscribe Now'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(lesson?.title ?? 'Lesson'),
@@ -110,7 +165,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         </style>
       </head>
       <body>
-        <video controls autoplay playsinline>
+        <video controls autoplay playsinline controlsList="nodownload" oncontextmenu="return false;">
           <source src="$videoUrl">
           Your browser does not support the video tag.
         </video>

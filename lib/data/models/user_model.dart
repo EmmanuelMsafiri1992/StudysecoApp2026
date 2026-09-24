@@ -50,21 +50,41 @@ class UserModel {
     final mergedIds = enrolledSubjectIds.isNotEmpty
         ? enrolledSubjectIds
         : savedIds?.map<int>((e) => e is int ? e : int.parse(e.toString())).toList() ?? <int>[];
+    final rawFormStr = json['grade_level'] ?? json['form'] ?? json['class'] ??
+        json['year_group'] ?? json['student_class'] ?? json['level'] ??
+        enrollment?['grade_level'] ?? enrollment?['form'] ?? enrollment?['class'];
+    final formId = json['form_id'] ?? json['grade_id'] ?? json['class_id'];
+    String? resolvedForm;
+    if (rawFormStr != null && rawFormStr.toString().isNotEmpty) {
+      resolvedForm = rawFormStr.toString();
+    } else if (formId != null) {
+      resolvedForm = 'Form $formId';
+    } else if (enrolledSubjects != null && enrolledSubjects.isNotEmpty) {
+      final firstSubjectForm = (enrolledSubjects.first as Map?)?['form']?.toString() ??
+          (enrolledSubjects.first as Map?)?['grade_level']?.toString();
+      if (firstSubjectForm != null && firstSubjectForm.isNotEmpty) {
+        resolvedForm = firstSubjectForm;
+      }
+    }
+    final rawCountry = json['country'] ?? json['country_code'] ?? json['location'] ??
+        json['nationality'] ?? json['region'];
+    final rawCurrency = json['currency'] ?? json['preferred_currency'] ??
+        json['currency_code'];
     return UserModel(
       id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       role: json['role'] ?? 'student',
       phone: json['phone'],
-      country: json['country'],
-      currency: json['currency'],
-      form: json['grade_level'] ?? json['form'],
-      schoolName: json['school_name'],
+      country: rawCountry?.toString().isNotEmpty == true ? rawCountry.toString() : null,
+      currency: rawCurrency?.toString().isNotEmpty == true ? rawCurrency.toString() : null,
+      form: resolvedForm,
+      schoolName: json['school_name'] ?? json['school'],
       profilePhoto: json['avatar'] ?? json['profile_photo'] ?? json['profile_photo_url'],
       hasActiveSubscription: hasActiveSubscription,
       subscriptionExpiresAt: expiresAt,
-      totalPoints: json['total_points'] ?? 0,
-      streak: json['streak'] ?? 0,
+      totalPoints: json['total_points'] ?? json['points'] ?? 0,
+      streak: json['streak'] ?? json['current_streak'] ?? 0,
       enrolledSubjectIds: mergedIds,
     );
   }

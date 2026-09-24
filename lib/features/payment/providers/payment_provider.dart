@@ -7,6 +7,14 @@ final paymentMethodsProvider = FutureProvider<List<PaymentMethodModel>>((ref) {
   return ref.read(apiServiceProvider).getPaymentMethods();
 });
 
+final subscriptionPlansProvider = FutureProvider.family<List<AccessDurationModel>, String>((ref, currency) async {
+  final pending = ref.watch(pendingEnrollmentSubjectsProvider);
+  final enrolledCount = pending.isNotEmpty
+      ? pending.length
+      : (ref.watch(authProvider).user?.enrolledSubjectIds.length ?? 0);
+  return AccessDurationModel.getDefaultsForSubjects(currency, enrolledCount);
+});
+
 final paymentHistoryProvider = FutureProvider<List<PaymentModel>>((ref) {
   return ref.read(apiServiceProvider).getPaymentHistory();
 });
@@ -29,7 +37,7 @@ class PaymentFlowState {
     this.error,
     this.paystackInit,
     this.isSuccess = false,
-    this.currency = 'USD',
+    this.currency = 'MWK',
   });
 
   PaymentFlowState copyWith({
@@ -117,19 +125,24 @@ class PaymentFlowNotifier extends StateNotifier<PaymentFlowState> {
   Future<bool> submitManualPayment({
     String? proofPath,
     String? transactionRef,
+    List<int>? subjectIds,
+    String? gradeLevel,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      await _apiService.submitManualPayment(
+      final result = await _apiService.submitManualPayment(
         methodId: state.selectedMethod!.id,
         amount: state.selectedDuration!.price,
         currency: state.currency,
         durationMonths: state.selectedDuration!.months,
+        subjectIds: subjectIds,
+        gradeLevel: gradeLevel,
         proofPath: proofPath,
         transactionReference: transactionRef,
       );
-      state = state.copyWith(isLoading: false, isSuccess: true);
-      return true;
+      final ok = result['data'] != null || result['message'] != null;
+      state = state.copyWith(isLoading: false, isSuccess: ok);
+      return ok;
     } catch (e) {
       state = state.copyWith(
           isLoading: false, error: 'Failed to submit payment');
@@ -146,3 +159,5 @@ final paymentFlowProvider =
     StateNotifierProvider<PaymentFlowNotifier, PaymentFlowState>((ref) {
   return PaymentFlowNotifier(ref.read(apiServiceProvider));
 });
+
+final pendingEnrollmentSubjectsProvider = StateProvider<List<int>>((ref) => []);
