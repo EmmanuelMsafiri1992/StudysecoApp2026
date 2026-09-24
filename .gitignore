@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Release bundles uploaded to Play Console
+/play_store/*.aab
