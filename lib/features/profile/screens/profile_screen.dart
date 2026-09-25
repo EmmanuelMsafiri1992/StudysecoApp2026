@@ -282,8 +282,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     onTap: () => context.push(AppRoutes.achievements),
                   ),
                   _MenuTile(
+                    icon: Icons.credit_card_rounded,
+                    label: 'Payment History',
+                    color: AppColors.secondary,
+                    onTap: () => context.push(AppRoutes.paymentHistory),
+                  ),
+                  _MenuTile(
+                    icon: Icons.school_rounded,
+                    label: 'Enrollment',
+                    color: AppColors.primary,
+                    onTap: () => context.push(AppRoutes.enrollment),
+                  ),
+                  _MenuTile(
                     icon: Icons.block_rounded,
-                    label: 'Blocked users',
+                    label: 'Blocked Users',
                     color: AppColors.error,
                     onTap: () => context.push(AppRoutes.blockedUsers),
                   ),

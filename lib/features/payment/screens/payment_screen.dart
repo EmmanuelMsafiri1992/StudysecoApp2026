@@ -655,7 +655,17 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
       final init = await ref
           .read(paymentFlowProvider.notifier)
           .initializePaystack(user?.email ?? '');
-      if (init == null || !mounted) return;
+      if (!mounted) return;
+      if (init == null) {
+        final err = ref.read(paymentFlowProvider).error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err ?? 'Failed to initialize payment. Please try again.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
 
       final success = await Navigator.push<bool>(
         context,
@@ -667,7 +677,11 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
         ),
       );
       if (success == true && mounted) {
-        ref.read(paymentFlowProvider.notifier);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => _PendingApprovalDialog(),
+        );
       }
     } else {
       final pendingSubjects = ref.read(pendingEnrollmentSubjectsProvider);
@@ -679,11 +693,21 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
             subjectIds: pendingSubjects.isNotEmpty ? pendingSubjects : null,
             gradeLevel: user?.form,
           );
-      if (success && mounted) {
+      if (!mounted) return;
+      if (success) {
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (_) => _PendingApprovalDialog(),
+        );
+      } else {
+        final err = ref.read(paymentFlowProvider).error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err ?? 'Failed to submit payment. Please try again.'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     }

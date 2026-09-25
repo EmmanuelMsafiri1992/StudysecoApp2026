@@ -120,14 +120,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         final freshUser = await _repository.getProfile();
         final existing = state.user;
+        final serverIds = freshUser.enrolledSubjectIds;
+        final mergedIds = serverIds.isNotEmpty
+            ? serverIds
+            : {...(existing?.enrolledSubjectIds ?? []), ...subjectIds}.toList();
         final merged = freshUser.copyWith(
           form: (freshUser.form != null && freshUser.form!.isNotEmpty) ? freshUser.form : (existing?.form ?? form),
           currency: (freshUser.currency != null && freshUser.currency!.isNotEmpty) ? freshUser.currency : existing?.currency,
+          enrolledSubjectIds: mergedIds,
         );
         await _repository.saveUser(merged);
         state = state.copyWith(user: merged, isLoading: false, isRegistering: false);
       } catch (_) {
-        state = state.copyWith(isLoading: false, isRegistering: false);
+        final existing = state.user;
+        if (existing != null) {
+          final mergedIds = {...(existing.enrolledSubjectIds), ...subjectIds}.toList();
+          final updated = existing.copyWith(enrolledSubjectIds: mergedIds);
+          await _repository.saveUser(updated);
+          state = state.copyWith(user: updated, isLoading: false, isRegistering: false);
+        } else {
+          state = state.copyWith(isLoading: false, isRegistering: false);
+        }
       }
     } catch (e) {
       state = state.copyWith(isLoading: false, isRegistering: false, error: _parseError(e));

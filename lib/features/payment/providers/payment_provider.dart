@@ -140,12 +140,26 @@ class PaymentFlowNotifier extends StateNotifier<PaymentFlowState> {
         proofPath: proofPath,
         transactionReference: transactionRef,
       );
-      final ok = result['data'] != null || result['message'] != null;
+      final statusOk = result['status'] == true || result['status'] == 'success';
+      final hasData = result['data'] != null;
+      final hasMessage = result['message'] != null;
+      final ok = statusOk || hasData || hasMessage;
       state = state.copyWith(isLoading: false, isSuccess: ok);
+      if (!ok) {
+        state = state.copyWith(error: 'Payment submission failed. Please try again.');
+      }
       return ok;
     } catch (e) {
-      state = state.copyWith(
-          isLoading: false, error: 'Failed to submit payment');
+      final msg = e.toString();
+      String userMsg = 'Failed to submit payment. Please try again.';
+      if (msg.contains('422') || msg.contains('Unprocessable')) {
+        userMsg = 'Invalid payment details. Please check and try again.';
+      } else if (msg.contains('401') || msg.contains('Unauthorized')) {
+        userMsg = 'Session expired. Please log in again.';
+      } else if (msg.contains('SocketException') || msg.contains('network') || msg.contains('connection')) {
+        userMsg = 'No internet connection. Please check your connection.';
+      }
+      state = state.copyWith(isLoading: false, error: userMsg);
       return false;
     }
   }

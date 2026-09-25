@@ -393,8 +393,6 @@ class ApiService {
     return list.map((u) => BlockedUserModel.fromJson(Map<String, dynamic>.from(u as Map))).toList();
   }
 
-  /// The message the server sent with an error, such as why access was
-  /// refused, or a general one when there is none.
   static String errorMessage(Object error, [String fallback = 'Something went wrong. Please try again.']) {
     if (error is DioException) {
       final data = error.response?.data;
@@ -411,38 +409,51 @@ class ApiService {
     return fallback;
   }
 
-  // Library — correct endpoint /library returning data key
+  // Library — try multiple endpoints and extract list from any known key
   Future<List<LibraryMaterialModel>> getLibraryMaterials({int? subjectId}) async {
-    for (int attempt = 0; attempt < 3; attempt++) {
-      try {
-        final params = subjectId != null ? {'subject_id': subjectId} : null;
-        final response = await _dio.get(
-          '/library',
-          queryParameters: params,
-          options: Options(
-            receiveTimeout: const Duration(seconds: 60),
-            sendTimeout: const Duration(seconds: 30),
-          ),
-        );
-        final body = response.data;
-        dev.log('[LIBRARY] keys: ${body is Map ? body.keys.toList() : "list"}', name: 'ApiService');
-        final list = _extractList(body, ['data', 'materials', 'items']);
-        if (list != null) {
-          return list.map((m) => LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map))).toList();
+    final endpoints = ['/library', '/study-materials', '/resources', '/materials'];
+    for (final endpoint in endpoints) {
+      for (int attempt = 0; attempt < 2; attempt++) {
+        try {
+          final params = subjectId != null ? {'subject_id': subjectId} : null;
+          final response = await _dio.get(
+            endpoint,
+            queryParameters: params,
+            options: Options(
+              receiveTimeout: const Duration(seconds: 60),
+              sendTimeout: const Duration(seconds: 30),
+            ),
+          );
+          final body = response.data;
+          dev.log('[LIBRARY] endpoint=$endpoint keys: ${body is Map ? body.keys.toList() : "list"} body=$body', name: 'ApiService');
+          final list = _extractList(body, ['data', 'materials', 'items', 'resources', 'files', 'documents']);
+          if (list != null && list.isNotEmpty) {
+            dev.log('[LIBRARY] found ${list.length} items at $endpoint first item keys: ${(list[0] as Map?)?.keys.toList()}', name: 'ApiService');
+            final results = <LibraryMaterialModel>[];
+            for (final m in list) {
+              try {
+                results.add(LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map)));
+              } catch (e) {
+                dev.log('[LIBRARY] parse error for item: $e item=$m', name: 'ApiService');
+              }
+            }
+            return results;
+          }
+          if (list != null && list.isEmpty) return [];
+          return [];
+        } on DioException catch (e) {
+          final status = e.response?.statusCode;
+          dev.log('[LIBRARY] $endpoint attempt $attempt status=$status err=${e.message}', name: 'ApiService');
+          if (status == 404 || status == 405 || status == 403) break;
+          final isConnectionError = e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.connectionTimeout;
+          if (isConnectionError && attempt < 1) {
+            await Future.delayed(Duration(seconds: (attempt + 1) * 2));
+            continue;
+          }
+          break;
         }
-        return [];
-      } on DioException catch (e) {
-        final status = e.response?.statusCode;
-        if (status == 404 || status == 405) return [];
-        if (status == 403) throw Exception(errorMessage(e));
-        final isConnectionError = e.type == DioExceptionType.connectionError ||
-            e.type == DioExceptionType.receiveTimeout ||
-            e.type == DioExceptionType.connectionTimeout;
-        if (isConnectionError && attempt < 2) {
-          await Future.delayed(Duration(seconds: (attempt + 1) * 2));
-          continue;
-        }
-        throw Exception('Failed to load library: ${status ?? e.message}');
       }
     }
     return [];

@@ -43,6 +43,23 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
     try {
       final subjects = await _apiService.getEnrollmentSubjects(gradeLevel: form);
       final enrolledIds = _ref.read(authProvider).user?.enrolledSubjectIds ?? [];
+
+      List<SubjectModel> allSubjects = subjects;
+      final allHaveZeroTopics = subjects.isNotEmpty && subjects.every((s) => s.topicsCount == 0);
+      if (allHaveZeroTopics) {
+        try {
+          final fullSubjects = await _apiService.getSubjects(form: form);
+          if (fullSubjects.isNotEmpty) {
+            allSubjects = fullSubjects;
+          }
+        } catch (_) {}
+      }
+
+      final topicsMap = <int, int>{};
+      for (final s in allSubjects) {
+        if (s.topicsCount > 0) topicsMap[s.id] = s.topicsCount;
+      }
+
       final marked = subjects.map((s) {
         final isEnrolled = enrolledIds.contains(s.id);
         return SubjectModel(
@@ -54,7 +71,7 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
           color: s.color,
           form: s.form,
           isCore: s.isCore,
-          topicsCount: s.topicsCount,
+          topicsCount: topicsMap[s.id] ?? s.topicsCount,
           lessonsCount: s.lessonsCount,
           progressPercent: s.progressPercent,
           isEnrolled: isEnrolled,

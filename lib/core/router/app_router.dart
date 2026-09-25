@@ -21,7 +21,10 @@ import '../../features/community/screens/create_post_screen.dart';
 import '../../features/community/screens/blocked_users_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/achievements/screens/achievements_screen.dart';
+import '../../features/enrollment/screens/enrollment_screen.dart';
+import '../../features/payment/screens/payment_screen.dart';
 import '../../features/library/screens/library_screen.dart';
+import '../../features/payment/screens/payment_history_screen.dart';
 
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
@@ -51,7 +54,10 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String library = '/library';
   static const String achievements = '/achievements';
+  static const String payment = '/payment';
+  static const String enrollment = '/enrollment';
   static const String blockedUsers = '/blocked-users';
+  static const String paymentHistory = '/payment-history';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -167,12 +173,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.payment,
+        builder: (context, state) => const PaymentScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.enrollment,
+        builder: (context, state) => const EnrollmentScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.blockedUsers,
         builder: (context, state) => const BlockedUsersScreen(),
       ),
       GoRoute(
         path: AppRoutes.achievements,
         builder: (context, state) => const AchievementsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.paymentHistory,
+        builder: (context, state) => const PaymentHistoryScreen(),
       ),
     ],
   );
