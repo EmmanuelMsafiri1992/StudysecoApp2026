@@ -35,14 +35,26 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(paymentFlowProvider);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (state.step > 0) {
+          ref.read(paymentFlowProvider.notifier).goBack();
+        } else if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/dashboard');
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Subscription'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: state.step > 0
               ? () => ref.read(paymentFlowProvider.notifier).goBack()
-              : () => context.pop(),
+              : () => context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
       ),
       body: Column(
@@ -58,6 +70,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   ][state.step.clamp(0, 2)],
           ),
         ],
+      ),
       ),
     );
   }

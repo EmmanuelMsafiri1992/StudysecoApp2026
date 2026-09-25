@@ -45,14 +45,26 @@ class _EnrollmentScreenState extends ConsumerState<EnrollmentScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _loadSubjectsForUser());
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_step > 0) {
+          setState(() => _step--);
+        } else if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/dashboard');
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Add Subjects'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _step > 0
               ? () => setState(() => _step--)
-              : () => context.pop(),
+              : () => context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
       ),
       body: Column(
@@ -91,6 +103,7 @@ class _EnrollmentScreenState extends ConsumerState<EnrollmentScreen> {
                   ),
           ),
         ],
+      ),
       ),
     );
   }

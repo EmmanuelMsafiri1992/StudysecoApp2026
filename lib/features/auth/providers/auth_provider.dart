@@ -220,7 +220,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         country: (freshUser.country != null && freshUser.country!.isNotEmpty) ? freshUser.country : existing.country,
         currency: (freshUser.currency != null && freshUser.currency!.isNotEmpty) ? freshUser.currency : existing.currency,
         schoolName: (freshUser.schoolName != null && freshUser.schoolName!.isNotEmpty) ? freshUser.schoolName : existing.schoolName,
+        enrolledSubjectIds: freshUser.enrolledSubjectIds.isNotEmpty ? freshUser.enrolledSubjectIds : (existing.enrolledSubjectIds),
       );
+      await _repository.saveUser(merged);
       state = state.copyWith(user: merged);
     } catch (_) {}
   }
@@ -234,7 +236,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         country: (freshUser.country != null && freshUser.country!.isNotEmpty) ? freshUser.country : existing.country,
         currency: (freshUser.currency != null && freshUser.currency!.isNotEmpty) ? freshUser.currency : existing.currency,
         schoolName: (freshUser.schoolName != null && freshUser.schoolName!.isNotEmpty) ? freshUser.schoolName : existing.schoolName,
+        enrolledSubjectIds: freshUser.enrolledSubjectIds.isNotEmpty ? freshUser.enrolledSubjectIds : existing.enrolledSubjectIds,
       );
+      await _repository.saveUser(merged);
       state = state.copyWith(user: merged);
     } catch (_) {}
   }

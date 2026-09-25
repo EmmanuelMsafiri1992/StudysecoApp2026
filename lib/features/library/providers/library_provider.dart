@@ -41,11 +41,7 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
       state = state.copyWith(materials: materials, isLoading: false);
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
-      if (msg.contains('404') || msg.contains('Not Found')) {
-        state = state.copyWith(materials: [], isLoading: false);
-      } else {
-        state = state.copyWith(isLoading: false, error: msg);
-      }
+      state = state.copyWith(isLoading: false, error: msg);
     }
   }
 }

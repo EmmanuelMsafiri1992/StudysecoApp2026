@@ -66,12 +66,17 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
       ),
       body: state.isLoading
           ? _LoadingGrid()
-          : state.error != null && displayList.isEmpty
+          : (state.error != null && displayList.isEmpty)
               ? _ErrorView(
                   onRetry: () =>
                       ref.read(subjectsProvider.notifier).loadSubjects(form: userForm))
               : displayList.isEmpty
-                  ? _EmptyView(onEnroll: () => context.push(AppRoutes.enrollment))
+                  ? (enrolledIds.isNotEmpty
+                      ? _ErrorView(
+                          onRetry: () => ref
+                              .read(subjectsProvider.notifier)
+                              .loadSubjects(form: userForm))
+                      : _EmptyView(onEnroll: () => context.push(AppRoutes.enrollment)))
                   : Column(
                       children: [
                         Expanded(

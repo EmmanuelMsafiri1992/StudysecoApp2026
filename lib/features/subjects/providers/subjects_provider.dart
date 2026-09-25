@@ -100,9 +100,13 @@ final subjectsProvider = StateNotifierProvider<SubjectsNotifier, SubjectsState>(
     final nextUserId = next.user?.id;
     final prevForm = previous?.user?.form;
     final nextForm = next.user?.form;
+    final prevIds = previous?.user?.enrolledSubjectIds ?? [];
+    final nextIds = next.user?.enrolledSubjectIds ?? [];
     final userJustLoggedIn = prevUserId == null && nextUserId != null;
     final formChanged = nextForm != prevForm;
-    if (userJustLoggedIn || (formChanged && next.user != null)) {
+    final idsChanged = prevIds.length != nextIds.length ||
+        !prevIds.every((id) => nextIds.contains(id));
+    if (userJustLoggedIn || (formChanged && next.user != null) || (idsChanged && next.user != null)) {
       notifier.loadSubjects(form: nextForm);
     }
   });

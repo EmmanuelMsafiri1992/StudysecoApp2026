@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/payment_model.dart';
 import '../../../data/services/api_service.dart';
@@ -150,14 +151,29 @@ class PaymentFlowNotifier extends StateNotifier<PaymentFlowState> {
       }
       return ok;
     } catch (e) {
-      final msg = e.toString();
       String userMsg = 'Failed to submit payment. Please try again.';
-      if (msg.contains('422') || msg.contains('Unprocessable')) {
-        userMsg = 'Invalid payment details. Please check and try again.';
-      } else if (msg.contains('401') || msg.contains('Unauthorized')) {
-        userMsg = 'Session expired. Please log in again.';
-      } else if (msg.contains('SocketException') || msg.contains('network') || msg.contains('connection')) {
-        userMsg = 'No internet connection. Please check your connection.';
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        final data = e.response?.data;
+        if (data is Map) {
+          final serverMsg = data['message']?.toString() ?? '';
+          final errors = data['errors'];
+          if (errors is Map && errors.isNotEmpty) {
+            userMsg = errors.values
+                .map((v) => v is List ? v.first.toString() : v.toString())
+                .join('\n');
+          } else if (serverMsg.isNotEmpty) {
+            userMsg = serverMsg;
+          } else if (status == 422) {
+            userMsg = 'Invalid payment details. Please check and try again.';
+          } else if (status == 401) {
+            userMsg = 'Session expired. Please log in again.';
+          }
+        } else if (e.type == DioExceptionType.connectionError ||
+            e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout) {
+          userMsg = 'No internet connection. Please check your connection.';
+        }
       }
       state = state.copyWith(isLoading: false, error: userMsg);
       return false;

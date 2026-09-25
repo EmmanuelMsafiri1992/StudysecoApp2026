@@ -265,9 +265,9 @@ class ApiService {
       'amount': amount,
       'currency': currency,
       'duration_months': durationMonths,
-      if (transactionReference != null)
+      if (transactionReference != null && transactionReference.isNotEmpty)
         'transaction_reference': transactionReference,
-      if (gradeLevel != null) 'grade_level': gradeLevel,
+      if (gradeLevel != null && gradeLevel.isNotEmpty) 'grade_level': gradeLevel,
       if (proofPath != null)
         'proof': await MultipartFile.fromFile(proofPath),
     };
@@ -277,7 +277,16 @@ class ApiService {
       }
     }
     final formData = FormData.fromMap(map);
-    final response = await _dio.post('/payments/manual', data: formData);
+    dev.log('[PAYMENT] submitManualPayment fields: ${map.keys.toList()} methodId=$methodId amount=$amount currency=$currency duration=$durationMonths', name: 'ApiService');
+    final response = await _dio.post(
+      '/payments/manual',
+      data: formData,
+      options: Options(
+        contentType: 'multipart/form-data',
+        headers: {'Accept': 'application/json'},
+      ),
+    );
+    dev.log('[PAYMENT] submitManualPayment response: ${response.statusCode} ${response.data}', name: 'ApiService');
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -411,7 +420,14 @@ class ApiService {
 
   // Library — try multiple endpoints and extract list from any known key
   Future<List<LibraryMaterialModel>> getLibraryMaterials({int? subjectId}) async {
-    final endpoints = ['/library', '/study-materials', '/resources', '/materials'];
+    final endpoints = [
+      '/library',
+      '/study-materials',
+      '/resources',
+      '/materials',
+      '/student/library',
+      '/student/study-materials',
+    ];
     for (final endpoint in endpoints) {
       try {
         final params = subjectId != null ? {'subject_id': subjectId} : null;
@@ -424,10 +440,13 @@ class ApiService {
           ),
         );
         final body = response.data;
-        dev.log('[LIBRARY] endpoint=$endpoint status=${response.statusCode} type=${body.runtimeType} keys: ${body is Map ? body.keys.toList() : "list"} body=$body', name: 'ApiService');
-        final list = _extractList(body, ['data', 'materials', 'items', 'resources', 'files', 'documents', 'study_materials', 'content']);
+        dev.log('[LIBRARY] endpoint=$endpoint status=${response.statusCode} type=${body.runtimeType} keys: ${body is Map ? body.keys.toList() : "list"}', name: 'ApiService');
+        final list = _extractList(body, [
+          'data', 'materials', 'items', 'resources', 'files',
+          'documents', 'study_materials', 'content', 'library',
+        ]);
         if (list != null && list.isNotEmpty) {
-          dev.log('[LIBRARY] found ${list.length} items at $endpoint first item keys: ${(list[0] as Map?)?.keys.toList()}', name: 'ApiService');
+          dev.log('[LIBRARY] found ${list.length} items at $endpoint', name: 'ApiService');
           final results = <LibraryMaterialModel>[];
           for (final m in list) {
             try {
@@ -441,15 +460,12 @@ class ApiService {
         dev.log('[LIBRARY] $endpoint returned empty or unknown structure, trying next', name: 'ApiService');
       } on DioException catch (e) {
         final status = e.response?.statusCode;
-        dev.log('[LIBRARY] $endpoint DioException status=$status err=${e.message} responseBody=${e.response?.data}', name: 'ApiService');
-        if (status == 404 || status == 405) continue;
-        if (status == 403) break;
-        final isConnectionError = e.type == DioExceptionType.connectionError ||
-            e.type == DioExceptionType.receiveTimeout ||
-            e.type == DioExceptionType.connectionTimeout;
-        if (!isConnectionError) continue;
+        dev.log('[LIBRARY] $endpoint DioException status=$status err=${e.message}', name: 'ApiService');
+        if (status == 403 || status == 401) break;
+        continue;
       } catch (e) {
         dev.log('[LIBRARY] $endpoint unexpected error: $e', name: 'ApiService');
+        continue;
       }
     }
     return [];
