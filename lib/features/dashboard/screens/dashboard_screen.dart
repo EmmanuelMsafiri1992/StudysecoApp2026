@@ -280,18 +280,6 @@ class _DashboardContent extends ConsumerWidget {
                 onTap: () => context.go(AppRoutes.library),
               ),
               _QuickAction(
-                icon: Icons.school_rounded,
-                label: 'Enroll',
-                color: const Color(0xFF8B5CF6),
-                onTap: () => context.push(AppRoutes.enrollment),
-              ),
-              _QuickAction(
-                icon: Icons.payment_rounded,
-                label: 'Payment',
-                color: const Color(0xFF10B981),
-                onTap: () => context.push(AppRoutes.payment),
-              ),
-              _QuickAction(
                 icon: Icons.workspace_premium_outlined,
                 label: 'Achievements',
                 color: const Color(0xFFF59E0B),
@@ -302,12 +290,6 @@ class _DashboardContent extends ConsumerWidget {
                 label: 'Community',
                 color: const Color(0xFF06B6D4),
                 onTap: () => context.go(AppRoutes.community),
-              ),
-              _QuickAction(
-                icon: Icons.credit_card_rounded,
-                label: 'Pay History',
-                color: const Color(0xFFEC4899),
-                onTap: () => context.push(AppRoutes.paymentHistory),
               ),
               _QuickAction(
                 icon: Icons.person_outline,

@@ -56,13 +56,6 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Subjects'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add More Subjects',
-            onPressed: () => context.push(AppRoutes.enrollment),
-          ),
-        ],
       ),
       body: state.isLoading
           ? _LoadingGrid()
@@ -76,7 +69,7 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
                           onRetry: () => ref
                               .read(subjectsProvider.notifier)
                               .loadSubjects(form: userForm))
-                      : _EmptyView(onEnroll: () => context.push(AppRoutes.enrollment)))
+                      : const _EmptyView())
                   : Column(
                       children: [
                         Expanded(
@@ -293,8 +286,7 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _EmptyView extends StatelessWidget {
-  final VoidCallback onEnroll;
-  const _EmptyView({required this.onEnroll});
+  const _EmptyView();
 
   @override
   Widget build(BuildContext context) {
@@ -315,22 +307,9 @@ class _EmptyView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Enroll in subjects to start learning',
+              'Your subjects will appear here once your enrolment is active on studyseco.com',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onEnroll,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Enroll in Subjects'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
             ),
           ],
         ),
