@@ -15,6 +15,13 @@ class SubjectDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final topicsState = ref.watch(topicsProvider(slug));
+    // The route param is the subject id, so look the name up rather than showing it.
+    final subject = ref
+        .watch(subjectsProvider)
+        .subjects
+        .where((s) => s.id.toString() == slug || s.slug == slug)
+        .firstOrNull;
+    final title = subject?.name ?? topicsState.subjectName ?? '';
 
     return Scaffold(
       body: topicsState.isLoading
@@ -24,16 +31,19 @@ class SubjectDetailScreen extends ConsumerWidget {
                   onRetry: () => ref
                       .read(topicsProvider(slug).notifier)
                       .loadTopics(slug))
-              : _SubjectContent(slug: slug, topics: topicsState.topics),
+              : _SubjectContent(
+                  slug: slug, title: title, topics: topicsState.topics),
     );
   }
 }
 
 class _SubjectContent extends StatelessWidget {
   final String slug;
+  final String title;
   final List<TopicModel> topics;
 
-  const _SubjectContent({required this.slug, required this.topics});
+  const _SubjectContent(
+      {required this.slug, required this.title, required this.topics});
 
   @override
   Widget build(BuildContext context) {
@@ -44,9 +54,7 @@ class _SubjectContent extends StatelessWidget {
           pinned: true,
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
-              slug.replaceAll('-', ' ').split(' ').map((w) =>
-                  w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : w)
-                  .join(' '),
+              title,
               style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -233,7 +241,12 @@ class _LessonTile extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${lesson.durationMinutes} min • ${lesson.type}',
+                    [
+                      if (lesson.durationMinutes > 0) '${lesson.durationMinutes} min',
+                      lesson.type.isEmpty
+                          ? ''
+                          : lesson.type[0].toUpperCase() + lesson.type.substring(1),
+                    ].where((p) => p.isNotEmpty).join(' • '),
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.textMuted),
                   ),

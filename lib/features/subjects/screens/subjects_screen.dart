@@ -168,7 +168,7 @@ class SubjectCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${subject.topicsCount} topics',
+              subject.topicsCount == 1 ? '1 topic' : '${subject.topicsCount} topics',
               style: const TextStyle(
                   fontSize: 12, color: AppColors.textMuted),
             ),

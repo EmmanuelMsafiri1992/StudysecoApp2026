@@ -271,7 +271,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${lesson.durationMinutes} min • Video',
+                  lesson.durationMinutes > 0
+                      ? '${lesson.durationMinutes} min • Video'
+                      : 'Video lesson',
                   style: const TextStyle(
                       color: AppColors.textMuted, fontSize: 13),
                 ),
@@ -339,7 +341,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                         ),
                       ),
                       Text(
-                        '${lesson.durationMinutes} min read',
+                        lesson.durationMinutes > 0
+                            ? '${lesson.durationMinutes} min read'
+                            : 'Reading',
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 13),
                       ),

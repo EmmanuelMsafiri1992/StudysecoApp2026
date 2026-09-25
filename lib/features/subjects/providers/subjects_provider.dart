@@ -43,25 +43,16 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
     try {
       final subjects = await _apiService.getEnrollmentSubjects(gradeLevel: form);
       final enrolledIds = _ref.read(authProvider).user?.enrolledSubjectIds ?? [];
-
-      List<SubjectModel> allSubjects = subjects;
-      final allHaveZeroTopics = subjects.isNotEmpty && subjects.every((s) => s.topicsCount == 0);
-      if (allHaveZeroTopics) {
-        try {
-          final fullSubjects = await _apiService.getSubjects(form: form);
-          if (fullSubjects.isNotEmpty) {
-            allSubjects = fullSubjects;
-          }
-        } catch (_) {}
-      }
-
-      final topicsMap = <int, int>{};
-      for (final s in allSubjects) {
-        if (s.topicsCount > 0) topicsMap[s.id] = s.topicsCount;
-      }
-
+      // /enrollment/subjects has no counts; /subjects does, so merge them in by id.
+      final countsById = <int, SubjectModel>{};
+      try {
+        for (final s in await _apiService.getSubjects(form: form)) {
+          countsById[s.id] = s;
+        }
+      } catch (_) {}
       final marked = subjects.map((s) {
         final isEnrolled = enrolledIds.contains(s.id);
+        final counts = countsById[s.id];
         return SubjectModel(
           id: s.id,
           name: s.name,
@@ -71,8 +62,8 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
           color: s.color,
           form: s.form,
           isCore: s.isCore,
-          topicsCount: topicsMap[s.id] ?? s.topicsCount,
-          lessonsCount: s.lessonsCount,
+          topicsCount: s.topicsCount > 0 ? s.topicsCount : (counts?.topicsCount ?? 0),
+          lessonsCount: s.lessonsCount > 0 ? s.lessonsCount : (counts?.lessonsCount ?? 0),
           progressPercent: s.progressPercent,
           isEnrolled: isEnrolled,
         );
@@ -116,22 +107,26 @@ final subjectsProvider = StateNotifierProvider<SubjectsNotifier, SubjectsState>(
 
 class TopicsState {
   final List<TopicModel> topics;
+  final String? subjectName;
   final bool isLoading;
   final String? error;
 
   const TopicsState({
     this.topics = const [],
+    this.subjectName,
     this.isLoading = false,
     this.error,
   });
 
   TopicsState copyWith({
     List<TopicModel>? topics,
+    String? subjectName,
     bool? isLoading,
     String? error,
   }) {
     return TopicsState(
       topics: topics ?? this.topics,
+      subjectName: subjectName ?? this.subjectName,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -146,8 +141,9 @@ class TopicsNotifier extends StateNotifier<TopicsState> {
   Future<void> loadTopics(String subjectSlug) async {
     state = state.copyWith(isLoading: true);
     try {
-      final topics = await _apiService.getTopics(subjectSlug);
-      state = state.copyWith(topics: topics, isLoading: false);
+      final result = await _apiService.getSubjectTopics(subjectSlug);
+      state = state.copyWith(
+          topics: result.topics, subjectName: result.name, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }

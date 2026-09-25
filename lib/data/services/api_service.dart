@@ -137,13 +137,21 @@ class ApiService {
   }
 
   Future<List<TopicModel>> getTopics(String subjectSlugOrId) async {
+    return (await getSubjectTopics(subjectSlugOrId)).topics;
+  }
+
+  Future<({String? name, List<TopicModel> topics})> getSubjectTopics(
+      String subjectSlugOrId) async {
     final response = await _dio.get('/subjects/$subjectSlugOrId');
     final data = response.data['data'] ?? response.data;
     final topics = data['topics'] as List?;
-    if (topics != null) {
-      return topics.map((t) => TopicModel.fromJson(Map<String, dynamic>.from(t as Map))).toList();
-    }
-    return [];
+    return (
+      name: data['name'] as String?,
+      topics: topics
+              ?.map((t) => TopicModel.fromJson(Map<String, dynamic>.from(t as Map)))
+              .toList() ??
+          <TopicModel>[],
+    );
   }
 
   Future<LessonModel> getLesson(int topicId, int lessonId) async {
