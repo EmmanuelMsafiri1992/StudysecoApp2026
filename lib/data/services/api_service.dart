@@ -413,47 +413,43 @@ class ApiService {
   Future<List<LibraryMaterialModel>> getLibraryMaterials({int? subjectId}) async {
     final endpoints = ['/library', '/study-materials', '/resources', '/materials'];
     for (final endpoint in endpoints) {
-      for (int attempt = 0; attempt < 2; attempt++) {
-        try {
-          final params = subjectId != null ? {'subject_id': subjectId} : null;
-          final response = await _dio.get(
-            endpoint,
-            queryParameters: params,
-            options: Options(
-              receiveTimeout: const Duration(seconds: 60),
-              sendTimeout: const Duration(seconds: 30),
-            ),
-          );
-          final body = response.data;
-          dev.log('[LIBRARY] endpoint=$endpoint keys: ${body is Map ? body.keys.toList() : "list"} body=$body', name: 'ApiService');
-          final list = _extractList(body, ['data', 'materials', 'items', 'resources', 'files', 'documents']);
-          if (list != null && list.isNotEmpty) {
-            dev.log('[LIBRARY] found ${list.length} items at $endpoint first item keys: ${(list[0] as Map?)?.keys.toList()}', name: 'ApiService');
-            final results = <LibraryMaterialModel>[];
-            for (final m in list) {
-              try {
-                results.add(LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map)));
-              } catch (e) {
-                dev.log('[LIBRARY] parse error for item: $e item=$m', name: 'ApiService');
-              }
+      try {
+        final params = subjectId != null ? {'subject_id': subjectId} : null;
+        final response = await _dio.get(
+          endpoint,
+          queryParameters: params,
+          options: Options(
+            receiveTimeout: const Duration(seconds: 60),
+            sendTimeout: const Duration(seconds: 30),
+          ),
+        );
+        final body = response.data;
+        dev.log('[LIBRARY] endpoint=$endpoint status=${response.statusCode} type=${body.runtimeType} keys: ${body is Map ? body.keys.toList() : "list"} body=$body', name: 'ApiService');
+        final list = _extractList(body, ['data', 'materials', 'items', 'resources', 'files', 'documents', 'study_materials', 'content']);
+        if (list != null && list.isNotEmpty) {
+          dev.log('[LIBRARY] found ${list.length} items at $endpoint first item keys: ${(list[0] as Map?)?.keys.toList()}', name: 'ApiService');
+          final results = <LibraryMaterialModel>[];
+          for (final m in list) {
+            try {
+              results.add(LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map)));
+            } catch (e) {
+              dev.log('[LIBRARY] parse error for item: $e item=$m', name: 'ApiService');
             }
-            return results;
           }
-          if (list != null && list.isEmpty) return [];
-          return [];
-        } on DioException catch (e) {
-          final status = e.response?.statusCode;
-          dev.log('[LIBRARY] $endpoint attempt $attempt status=$status err=${e.message}', name: 'ApiService');
-          if (status == 404 || status == 405 || status == 403) break;
-          final isConnectionError = e.type == DioExceptionType.connectionError ||
-              e.type == DioExceptionType.receiveTimeout ||
-              e.type == DioExceptionType.connectionTimeout;
-          if (isConnectionError && attempt < 1) {
-            await Future.delayed(Duration(seconds: (attempt + 1) * 2));
-            continue;
-          }
-          break;
+          if (results.isNotEmpty) return results;
         }
+        dev.log('[LIBRARY] $endpoint returned empty or unknown structure, trying next', name: 'ApiService');
+      } on DioException catch (e) {
+        final status = e.response?.statusCode;
+        dev.log('[LIBRARY] $endpoint DioException status=$status err=${e.message} responseBody=${e.response?.data}', name: 'ApiService');
+        if (status == 404 || status == 405) continue;
+        if (status == 403) break;
+        final isConnectionError = e.type == DioExceptionType.connectionError ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionTimeout;
+        if (!isConnectionError) continue;
+      } catch (e) {
+        dev.log('[LIBRARY] $endpoint unexpected error: $e', name: 'ApiService');
       }
     }
     return [];

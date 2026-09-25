@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/subject_model.dart';
 import '../providers/subjects_provider.dart';
@@ -28,13 +29,16 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(subjectsProvider);
-    final userForm = ref.watch(authProvider).user?.form;
+    final user = ref.watch(authProvider).user;
+    final userForm = user?.form;
+    final enrolledIds = user?.enrolledSubjectIds ?? [];
 
     String normalizeForm(String v) {
       final s = v.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
       final digits = RegExp(r'\d+').firstMatch(s)?.group(0);
       return digits != null ? 'form$digits' : s;
     }
+
     final enrolled = state.subjects.where((s) {
       if (!s.isEnrolled) return false;
       if (userForm != null && userForm.isNotEmpty && s.form.isNotEmpty) {
@@ -43,18 +47,31 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
       return true;
     }).toList();
 
+    final localEnrolledFromIds = enrolledIds.isNotEmpty && enrolled.isEmpty && state.subjects.isNotEmpty
+        ? state.subjects.where((s) => enrolledIds.contains(s.id)).toList()
+        : <SubjectModel>[];
+
+    final displayList = enrolled.isNotEmpty ? enrolled : localEnrolledFromIds;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Subjects'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Add More Subjects',
+            onPressed: () => context.push(AppRoutes.enrollment),
+          ),
+        ],
       ),
       body: state.isLoading
           ? _LoadingGrid()
-          : state.error != null && enrolled.isEmpty
+          : state.error != null && displayList.isEmpty
               ? _ErrorView(
                   onRetry: () =>
                       ref.read(subjectsProvider.notifier).loadSubjects(form: userForm))
-              : enrolled.isEmpty
-                  ? _EmptyView()
+              : displayList.isEmpty
+                  ? _EmptyView(onEnroll: () => context.push(AppRoutes.enrollment))
                   : Column(
                       children: [
                         Expanded(
@@ -67,9 +84,9 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
                               crossAxisSpacing: 12,
                               childAspectRatio: 0.85,
                             ),
-                            itemCount: enrolled.length,
+                            itemCount: displayList.length,
                             itemBuilder: (context, index) {
-                              return SubjectCard(subject: enrolled[index])
+                              return SubjectCard(subject: displayList[index])
                                   .animate()
                                   .fadeIn(delay: (index * 50).ms)
                                   .slideY(begin: 0.2, end: 0);
@@ -271,29 +288,47 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _EmptyView extends StatelessWidget {
-  const _EmptyView();
+  final VoidCallback onEnroll;
+  const _EmptyView({required this.onEnroll});
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.book_outlined, size: 64, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          const Text(
-            'No subjects enrolled yet',
-            style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 16,
-                fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Your subjects will appear here once you are enrolled',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.book_outlined, size: 64, color: AppColors.textMuted),
+            const SizedBox(height: 16),
+            const Text(
+              'No subjects enrolled yet',
+              style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Enroll in subjects to start learning',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onEnroll,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Enroll in Subjects'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -189,27 +189,33 @@ class _MaterialCard extends StatelessWidget {
   }
 }
 
-class _EmptyView extends StatelessWidget {
+class _EmptyView extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.library_books_outlined, size: 56, color: AppColors.textMuted),
-          SizedBox(height: 16),
-          Text(
-            'No materials yet',
+        children: [
+          const Icon(Icons.library_books_outlined, size: 56, color: AppColors.textMuted),
+          const SizedBox(height: 16),
+          const Text(
+            'No materials found',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary),
           ),
-          SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             'Your teachers will share\nstudy materials here',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: () => ref.read(libraryProvider.notifier).load(),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Refresh'),
           ),
         ],
       ),
