@@ -268,8 +268,16 @@ class ApiService {
     String? proofPath,
     String? transactionReference,
   }) async {
+    // Try multiple endpoints in order — the server may use any of these
+    final endpoints = [
+      '/payments/manual',
+      '/enrollment/payment',
+      '/enrollment/trial',
+    ];
+
     final map = <String, dynamic>{
       'method_id': methodId,
+      'payment_method_id': methodId,
       'amount': amount,
       'currency': currency,
       'duration_months': durationMonths,
@@ -284,18 +292,34 @@ class ApiService {
         map['subject_ids[$i]'] = subjectIds[i];
       }
     }
-    final formData = FormData.fromMap(map);
+
     dev.log('[PAYMENT] submitManualPayment fields: ${map.keys.toList()} methodId=$methodId amount=$amount currency=$currency duration=$durationMonths', name: 'ApiService');
-    final response = await _dio.post(
-      '/payments/manual',
-      data: formData,
-      options: Options(
-        contentType: 'multipart/form-data',
-        headers: {'Accept': 'application/json'},
-      ),
-    );
-    dev.log('[PAYMENT] submitManualPayment response: ${response.statusCode} ${response.data}', name: 'ApiService');
-    return Map<String, dynamic>.from(response.data as Map);
+
+    DioException? lastError;
+    for (final endpoint in endpoints) {
+      try {
+        final formData = FormData.fromMap(map);
+        final response = await _dio.post(
+          endpoint,
+          data: formData,
+          options: Options(
+            contentType: 'multipart/form-data',
+            headers: {'Accept': 'application/json'},
+          ),
+        );
+        dev.log('[PAYMENT] $endpoint response: ${response.statusCode} ${response.data}', name: 'ApiService');
+        return Map<String, dynamic>.from(response.data as Map);
+      } on DioException catch (e) {
+        final status = e.response?.statusCode;
+        dev.log('[PAYMENT] $endpoint failed: status=$status msg=${e.response?.data}', name: 'ApiService');
+        if (status == 404 || status == 405) {
+          lastError = e;
+          continue;
+        }
+        rethrow;
+      }
+    }
+    throw lastError ?? Exception('Payment endpoint not available');
   }
 
   // Enrollment — correct endpoints
@@ -428,14 +452,7 @@ class ApiService {
 
   // Library — try multiple endpoints and extract list from any known key
   Future<List<LibraryMaterialModel>> getLibraryMaterials({int? subjectId}) async {
-    final endpoints = [
-      '/library',
-      '/study-materials',
-      '/resources',
-      '/materials',
-      '/student/library',
-      '/student/study-materials',
-    ];
+    final endpoints = ['/library'];
     for (final endpoint in endpoints) {
       try {
         final params = subjectId != null ? {'subject_id': subjectId} : null;
@@ -448,11 +465,11 @@ class ApiService {
           ),
         );
         final body = response.data;
-        dev.log('[LIBRARY] endpoint=$endpoint status=${response.statusCode} type=${body.runtimeType} keys: ${body is Map ? body.keys.toList() : "list"}', name: 'ApiService');
-        final list = _extractList(body, [
-          'data', 'materials', 'items', 'resources', 'files',
-          'documents', 'study_materials', 'content', 'library',
-        ]);
+        dev.log('[LIBRARY] endpoint=$endpoint status=${response.statusCode} type=${body.runtimeType}', name: 'ApiService');
+        if (body is Map) {
+          dev.log('[LIBRARY] top-level keys: ${body.keys.toList()}', name: 'ApiService');
+        }
+        final list = _extractListDeep(body);
         if (list != null && list.isNotEmpty) {
           dev.log('[LIBRARY] found ${list.length} items at $endpoint', name: 'ApiService');
           final results = <LibraryMaterialModel>[];
@@ -460,16 +477,18 @@ class ApiService {
             try {
               results.add(LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map)));
             } catch (e) {
-              dev.log('[LIBRARY] parse error for item: $e item=$m', name: 'ApiService');
+              dev.log('[LIBRARY] parse error for item: $e', name: 'ApiService');
             }
           }
           if (results.isNotEmpty) return results;
         }
-        dev.log('[LIBRARY] $endpoint returned empty or unknown structure, trying next', name: 'ApiService');
+        dev.log('[LIBRARY] $endpoint returned empty or unknown structure', name: 'ApiService');
       } on DioException catch (e) {
         final status = e.response?.statusCode;
         dev.log('[LIBRARY] $endpoint DioException status=$status err=${e.message}', name: 'ApiService');
-        if (status == 403 || status == 401) break;
+        if (status == 401 || status == 403) {
+          rethrow;
+        }
         continue;
       } catch (e) {
         dev.log('[LIBRARY] $endpoint unexpected error: $e', name: 'ApiService');
@@ -477,6 +496,27 @@ class ApiService {
       }
     }
     return [];
+  }
+
+  // Deep extraction — handles direct arrays, {data:[...]}, {data:{data:[...]}}, etc.
+  List? _extractListDeep(dynamic body) {
+    if (body is List) return body;
+    if (body is! Map) return null;
+    // Try common top-level keys
+    const keys = [
+      'data', 'materials', 'items', 'resources', 'files',
+      'documents', 'study_materials', 'content', 'library', 'results',
+    ];
+    for (final key in keys) {
+      final val = body[key];
+      if (val is List) return val;
+      // Handle Laravel pagination: {data: {data: [...]}}
+      if (val is Map) {
+        final nested = val['data'];
+        if (nested is List) return nested;
+      }
+    }
+    return null;
   }
 
   // Achievements

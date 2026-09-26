@@ -26,6 +26,24 @@ class AuthRepository {
   }
 
   Future<UserModel> register(Map<String, dynamic> data) async {
+    // Save metadata before registration so it survives across re-logins
+    final regForm = data['form']?.toString() ?? data['grade_level']?.toString();
+    final regCurrency = data['currency']?.toString();
+    final regCountry = data['country']?.toString();
+    final regPhone = data['phone']?.toString();
+    if (regForm != null && regForm.isNotEmpty) {
+      await StorageService.setString('user_form', regForm);
+    }
+    if (regCurrency != null && regCurrency.isNotEmpty) {
+      await StorageService.setString('user_currency', regCurrency);
+    }
+    if (regCountry != null && regCountry.isNotEmpty) {
+      await StorageService.setString('user_country', regCountry);
+    }
+    if (regPhone != null && regPhone.isNotEmpty) {
+      await StorageService.setString('user_phone', regPhone);
+    }
+
     await _apiService.register(data);
     final loginData = await _apiService.login(
       data['email'] as String,
@@ -40,11 +58,11 @@ class AuthRepository {
     }
     final userMap = loginData['user'] ?? loginData['data']?['user'] ?? loginData['data'] ?? loginData;
     final rawUser = UserModel.fromJson(Map<String, dynamic>.from(userMap as Map));
-    final form = data['form']?.toString();
-    final currency = data['currency']?.toString();
     final user = rawUser.copyWith(
-      form: (rawUser.form != null && rawUser.form!.isNotEmpty) ? rawUser.form : form,
-      currency: (rawUser.currency != null && rawUser.currency!.isNotEmpty) ? rawUser.currency : currency,
+      form: (rawUser.form != null && rawUser.form!.isNotEmpty) ? rawUser.form : regForm,
+      currency: (rawUser.currency != null && rawUser.currency!.isNotEmpty) ? rawUser.currency : regCurrency,
+      country: (rawUser.country != null && rawUser.country!.isNotEmpty) ? rawUser.country : regCountry,
+      phone: (rawUser.phone != null && rawUser.phone!.isNotEmpty) ? rawUser.phone : regPhone,
     );
     await saveUser(user);
     return user;

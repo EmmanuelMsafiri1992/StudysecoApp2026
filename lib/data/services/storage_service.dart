@@ -48,10 +48,8 @@ class StorageService {
     await _secureStorage.deleteAll();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.userKey);
-    await prefs.remove('user_form');
-    await prefs.remove('user_country');
-    await prefs.remove('user_currency');
-    await prefs.remove('user_phone');
     await prefs.remove('enrolled_subject_ids');
+    // Intentionally keep user_form, user_country, user_currency, user_phone
+    // so they can be restored after re-login when server doesn't return them
   }
 }

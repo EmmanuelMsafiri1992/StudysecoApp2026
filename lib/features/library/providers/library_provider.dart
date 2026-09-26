@@ -57,12 +57,16 @@ final libraryProvider = StateNotifierProvider<LibraryNotifier, LibraryState>((re
     final nextIds = next.user?.enrolledSubjectIds ?? [];
     final idsChanged = prevIds.length != nextIds.length ||
         !prevIds.every((id) => nextIds.contains(id));
-    if (userJustLoggedIn || idsChanged) {
+    if (userJustLoggedIn || (idsChanged && nextUserId != null)) {
       notifier.load();
     }
   });
 
-  notifier.load();
+  // Only load immediately if user is already logged in
+  final currentUser = ref.read(authProvider).user;
+  if (currentUser != null) {
+    notifier.load();
+  }
 
   return notifier;
 });
