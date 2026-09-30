@@ -8,11 +8,13 @@ class LibraryState {
   final List<LibraryMaterialModel> materials;
   final bool isLoading;
   final String? error;
+  final bool requiresSubscription;
 
   const LibraryState({
     this.materials = const [],
     this.isLoading = false,
     this.error,
+    this.requiresSubscription = false,
   });
 
   LibraryState copyWith({
@@ -20,11 +22,13 @@ class LibraryState {
     bool? isLoading,
     String? error,
     bool clearError = false,
+    bool? requiresSubscription,
   }) {
     return LibraryState(
       materials: materials ?? this.materials,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
+      requiresSubscription: requiresSubscription ?? this.requiresSubscription,
     );
   }
 }
@@ -36,13 +40,17 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
   LibraryNotifier(this._api, this._ref) : super(const LibraryState());
 
   Future<void> load() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true, clearError: true, requiresSubscription: false);
     try {
       final user = _ref.read(authProvider).user;
       final gradeLevel = user?.form;
       final materials = await _api.getLibraryMaterials(gradeLevel: gradeLevel);
       state = state.copyWith(materials: materials, isLoading: false);
     } catch (e) {
+      if (e.toString().contains('subscription_required')) {
+        state = state.copyWith(isLoading: false, requiresSubscription: true, clearError: true);
+        return;
+      }
       final msg = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(isLoading: false, error: msg);
     }

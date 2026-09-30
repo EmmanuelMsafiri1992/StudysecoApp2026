@@ -39,7 +39,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       ),
       body: state.isLoading
           ? _LoadingList()
-          : state.error != null
+          : state.requiresSubscription
+              ? const _SubscriptionGateView()
+              : state.error != null
               ? _ErrorView(
                   error: state.error!,
                   onRetry: () => ref.read(libraryProvider.notifier).load(),
@@ -187,6 +189,62 @@ class _MaterialCard extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+class _SubscriptionGateView extends StatelessWidget {
+  const _SubscriptionGateView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_rounded,
+                  size: 40, color: AppColors.primary),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Subscription Required',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'The Library is available to enrolled students.\nSubscribe to unlock all study materials.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pushNamed('/enrollment'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Subscribe Now',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

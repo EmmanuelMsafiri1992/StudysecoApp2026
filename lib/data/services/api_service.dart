@@ -680,7 +680,9 @@ class ApiService {
         } on DioException catch (e) {
           final status = e.response?.statusCode;
           dev.log('[LIBRARY] $endpoint params=$params status=$status body=${e.response?.data}', name: 'ApiService');
-          // Any HTTP error — skip to next endpoint (don't rethrow, library is non-critical)
+          // 403 = subscription required — stop immediately and surface the gate
+          if (status == 403) throw Exception('subscription_required');
+          // Any other HTTP error — skip to next endpoint
           break;
         } catch (e) {
           dev.log('[LIBRARY] $endpoint unexpected error: $e', name: 'ApiService');
