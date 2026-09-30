@@ -1,7 +1,7 @@
 name: studyseco_app
 description: StudySeco - Malawian Secondary Education Platform
 publish_to: 'none'
-version: 1.0.7+9
+version: 1.0.8+10
 
 environment:
   sdk: ^3.12.0
