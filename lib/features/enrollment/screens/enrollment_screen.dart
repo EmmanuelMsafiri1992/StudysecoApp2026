@@ -33,7 +33,7 @@ class _EnrollmentScreenState extends ConsumerState<EnrollmentScreen> {
     final form = user?.form;
     if (_loadedForForm != form) {
       _loadedForForm = form;
-      ref.read(subjectsProvider.notifier).loadSubjects(form: form);
+      ref.read(allSubjectsProvider.notifier).loadAllSubjectsForForm(form: form);
     }
   }
 
@@ -209,7 +209,7 @@ class _SubjectSelectionStep extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(subjectsProvider);
+    final state = ref.watch(allSubjectsProvider);
 
     if (state.isLoading) {
       return const Center(
@@ -240,7 +240,7 @@ class _SubjectSelectionStep extends ConsumerWidget {
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
             const SizedBox(height: 16),
             TextButton.icon(
-              onPressed: () => ref.read(subjectsProvider.notifier).loadSubjects(form: userForm),
+              onPressed: () => ref.read(allSubjectsProvider.notifier).loadAllSubjectsForForm(form: userForm),
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Retry'),
             ),
@@ -438,7 +438,7 @@ class _ConfirmStep extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final subjects = ref.watch(subjectsProvider).subjects;
+    final subjects = ref.watch(allSubjectsProvider).subjects;
     final selected =
         subjects.where((s) => selectedSubjectIds.contains(s.id)).toList();
 

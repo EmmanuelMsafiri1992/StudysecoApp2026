@@ -73,10 +73,21 @@ class ApiService {
     final body = response.data;
     final userMap = Map<String, dynamic>.from((body['user'] ?? body['data'] ?? body) as Map);
     dev.log('[PROFILE KEYS] ${userMap.keys.toList()}', name: 'ApiService');
-    dev.log('[PROFILE] grade_level=${userMap["grade_level"]} country=${userMap["country"]} currency=${userMap["currency"]}', name: 'ApiService');
+    dev.log('[PROFILE] grade_level=${userMap["grade_level"]} form=${userMap["form"]} country=${userMap["country"]} currency=${userMap["currency"]}', name: 'ApiService');
     final enrollment = userMap['enrollment'] as Map?;
     if (enrollment != null) {
       dev.log('[ENROLLMENT KEYS] ${enrollment.keys.toList()}', name: 'ApiService');
+      dev.log('[ENROLLMENT] status=${enrollment["status"]} grade=${enrollment["grade_level"]}', name: 'ApiService');
+      final subjects = enrollment['subjects'] as List?;
+      dev.log('[ENROLLMENT SUBJECTS COUNT] ${subjects?.length ?? 0}', name: 'ApiService');
+      if (subjects != null && subjects.isNotEmpty) {
+        dev.log('[ENROLLMENT SUBJECT KEYS] ${(subjects.first as Map).keys.toList()}', name: 'ApiService');
+        dev.log('[ENROLLMENT SUBJECT IDS] ${subjects.map((s) => (s as Map)["id"]).toList()}', name: 'ApiService');
+      }
+    } else {
+      dev.log('[ENROLLMENT] null — checking other keys for subjects', name: 'ApiService');
+      final subjects = userMap['subjects'] as List? ?? userMap['enrolled_subjects'] as List?;
+      dev.log('[USER SUBJECTS COUNT] ${subjects?.length ?? 0}', name: 'ApiService');
     }
     return UserModel.fromJson(userMap);
   }
@@ -103,10 +114,13 @@ class ApiService {
       }
       final response = await _dio.get(endpoint, queryParameters: params);
       final body = response.data;
-      dev.log('[SUBJECTS] endpoint=$endpoint keys: ${body is Map ? body.keys.toList() : "list"}', name: 'ApiService');
+      dev.log('[SUBJECTS] endpoint=$endpoint status=${response.statusCode} type=${body.runtimeType}', name: 'ApiService');
+      if (body is Map) dev.log('[SUBJECTS] keys=${body.keys.toList()}', name: 'ApiService');
       final list = _extractList(body, ['data', 'subjects', 'items']);
+      dev.log('[SUBJECTS] extracted ${list?.length ?? 0} items', name: 'ApiService');
       if (list == null || list.isEmpty) return [];
       dev.log('[SUBJECTS] first item keys: ${(list[0] as Map).keys.toList()}', name: 'ApiService');
+      dev.log('[SUBJECTS] first item is_enrolled=${(list[0] as Map)["is_enrolled"]}', name: 'ApiService');
       return list.map((s) => SubjectModel.fromJson(Map<String, dynamic>.from(s as Map))).toList();
     } on DioException catch (e) {
       dev.log('[SUBJECTS] DioException: ${e.response?.statusCode} ${e.response?.data}', name: 'ApiService');
@@ -121,13 +135,127 @@ class ApiService {
           : null;
       final response = await _dio.get('/enrollment/subjects', queryParameters: params);
       final body = response.data;
+      dev.log('[ENROLL_SUBJ] grade=$gradeLevel status=${response.statusCode} type=${body.runtimeType}', name: 'ApiService');
+      if (body is Map) dev.log('[ENROLL_SUBJ] keys=${body.keys.toList()}', name: 'ApiService');
       final list = _extractList(body, ['data', 'subjects', 'items']);
+      dev.log('[ENROLL_SUBJ] extracted ${list?.length ?? 0} items', name: 'ApiService');
       if (list == null) return [];
+      if (list.isNotEmpty) {
+        dev.log('[ENROLL_SUBJ] first item keys=${((list[0]) as Map).keys.toList()}', name: 'ApiService');
+        dev.log('[ENROLL_SUBJ] sample ids=${list.take(5).map((s) => (s as Map)["id"]).toList()}', name: 'ApiService');
+      }
       return list.map((s) => SubjectModel.fromJson(Map<String, dynamic>.from(s as Map))).toList();
     } catch (e) {
-      dev.log('[ENROLLMENT SUBJECTS] error: $e', name: 'ApiService');
+      dev.log('[ENROLL_SUBJ] error: $e', name: 'ApiService');
       return [];
     }
+  }
+
+  // Extract enrolled subjects directly from /user profile enrollment.subjects
+  Future<List<SubjectModel>> getEnrolledSubjectsFromProfile() async {
+    final response = await _dio.get('/user');
+    final body = response.data;
+    dev.log('[PROFILE_SUBJ] raw body type=${body.runtimeType}', name: 'ApiService');
+    dev.log('[PROFILE_SUBJ] raw body=${body.toString().length > 800 ? body.toString().substring(0, 800) : body}', name: 'ApiService');
+
+    final userMap = Map<String, dynamic>.from((body['user'] ?? body['data'] ?? body) as Map);
+    dev.log('[PROFILE_SUBJ] userMap keys=${userMap.keys.toList()}', name: 'ApiService');
+
+    // Try enrollment.subjects
+    final enrollment = userMap['enrollment'] as Map?;
+    dev.log('[PROFILE_SUBJ] enrollment keys=${enrollment?.keys.toList()}', name: 'ApiService');
+    List? rawSubjects = enrollment?['subjects'] as List?;
+    dev.log('[PROFILE_SUBJ] enrollment.subjects count=${rawSubjects?.length ?? 0}', name: 'ApiService');
+
+    // Try other common keys
+    rawSubjects ??= userMap['subjects'] as List?;
+    rawSubjects ??= userMap['enrolled_subjects'] as List?;
+    rawSubjects ??= userMap['my_subjects'] as List?;
+
+    // Try enrollments array (some APIs nest differently)
+    if (rawSubjects == null || rawSubjects.isEmpty) {
+      final enrollments = userMap['enrollments'] as List?;
+      if (enrollments != null && enrollments.isNotEmpty) {
+        final allSubjects = <dynamic>[];
+        for (final e in enrollments) {
+          final subs = (e as Map<dynamic, dynamic>?)?['subjects'] as List?;
+          if (subs != null) allSubjects.addAll(subs);
+        }
+        if (allSubjects.isNotEmpty) rawSubjects = allSubjects;
+      }
+    }
+
+    if (rawSubjects == null || rawSubjects.isEmpty) {
+      dev.log('[PROFILE_SUBJ] no subjects found in profile — all keys: ${userMap.keys.toList()}', name: 'ApiService');
+      throw Exception('No enrolled subjects found in /user profile');
+    }
+
+    dev.log('[PROFILE_SUBJ] found ${rawSubjects.length} subjects', name: 'ApiService');
+    if (rawSubjects.isNotEmpty) {
+      dev.log('[PROFILE_SUBJ] first subject=${rawSubjects.first}', name: 'ApiService');
+    }
+
+    final results = <SubjectModel>[];
+    for (final s in rawSubjects) {
+      try {
+        results.add(SubjectModel.fromJson(Map<String, dynamic>.from(s as Map)).copyWithEnrolled(true));
+      } catch (e) {
+        dev.log('[PROFILE_SUBJ] parse error for subject $s: $e', name: 'ApiService');
+      }
+    }
+    return results;
+  }
+
+  // Returns only the subjects the user is actually enrolled in, from multiple endpoints
+  Future<List<SubjectModel>> getMyEnrolledSubjects() async {
+    // Try dedicated enrolled-subjects endpoints, then enrollment status endpoint
+    final attempts = <(String, Map<String, dynamic>?)>[
+      ('/enrollment/my-subjects', null),
+      ('/my-subjects', null),
+      ('/student/subjects', null),
+      ('/enrollment/subjects', {'enrolled': 'true'}),
+      ('/subjects', {'enrolled': 'true'}),
+      ('/enrollment/subjects', {'is_enrolled': '1'}),
+      ('/enrollment/status', null),
+    ];
+    for (final (endpoint, params) in attempts) {
+      try {
+        final response = await _dio.get(endpoint, queryParameters: params);
+        final body = response.data;
+        dev.log('[MY_SUBJECTS] $endpoint params=$params status=${response.statusCode}', name: 'ApiService');
+        dev.log('[MY_SUBJECTS] body=${body.toString().length > 600 ? body.toString().substring(0, 600) : body}', name: 'ApiService');
+
+        // Special handling for /enrollment/status
+        if (endpoint == '/enrollment/status') {
+          final data = body['data'] ?? body;
+          final enrollmentMap = data['enrollment'] as Map?;
+          if (enrollmentMap != null) {
+            final subjects = enrollmentMap['subjects'] as List?;
+            if (subjects != null && subjects.isNotEmpty) {
+              dev.log('[MY_SUBJECTS] found ${subjects.length} subjects in enrollment/status', name: 'ApiService');
+              return subjects.map((s) => SubjectModel.fromJson(Map<String, dynamic>.from(s as Map)).copyWithEnrolled(true)).toList();
+            }
+          }
+          continue;
+        }
+
+        final list = _extractListDeep(body);
+        if (list != null && list.isNotEmpty) {
+          dev.log('[MY_SUBJECTS] found ${list.length} items at $endpoint', name: 'ApiService');
+          return list.map((s) => SubjectModel.fromJson(Map<String, dynamic>.from(s as Map)).copyWithEnrolled(true)).toList();
+        }
+        dev.log('[MY_SUBJECTS] $endpoint returned empty', name: 'ApiService');
+      } on DioException catch (e) {
+        final status = e.response?.statusCode;
+        dev.log('[MY_SUBJECTS] $endpoint status=$status body=${e.response?.data}', name: 'ApiService');
+        if (status == 401 || status == 403) rethrow;
+        continue;
+      } catch (e) {
+        dev.log('[MY_SUBJECTS] $endpoint error: $e', name: 'ApiService');
+        continue;
+      }
+    }
+    return [];
   }
 
   Future<SubjectModel> getSubject(String slugOrId) async {
@@ -450,70 +578,158 @@ class ApiService {
     return fallback;
   }
 
-  // Library — try multiple endpoints and extract list from any known key
-  Future<List<LibraryMaterialModel>> getLibraryMaterials({int? subjectId}) async {
-    final endpoints = ['/library'];
-    for (final endpoint in endpoints) {
-      try {
-        final params = subjectId != null ? {'subject_id': subjectId} : null;
-        final response = await _dio.get(
-          endpoint,
-          queryParameters: params,
-          options: Options(
-            receiveTimeout: const Duration(seconds: 60),
-            sendTimeout: const Duration(seconds: 30),
-          ),
-        );
-        final body = response.data;
-        dev.log('[LIBRARY] endpoint=$endpoint status=${response.statusCode} type=${body.runtimeType}', name: 'ApiService');
-        if (body is Map) {
-          dev.log('[LIBRARY] top-level keys: ${body.keys.toList()}', name: 'ApiService');
+  // Wrapper that returns both the parsed list and raw debug string
+  Future<({List<LibraryMaterialModel> materials, String rawDebug})> getLibraryMaterialsWithDebug({
+    String? gradeLevel,
+  }) async {
+    String debug = '';
+    try {
+      final response = await _dio.get(
+        '/library',
+        options: Options(receiveTimeout: const Duration(seconds: 30)),
+      );
+      final body = response.data;
+      debug = 'STATUS:${response.statusCode} BODY:${body.toString().length > 2000 ? body.toString().substring(0, 2000) : body}';
+      dev.log('[LIBRARY_DEBUG] $debug', name: 'ApiService');
+      final list = _extractListDeep(body);
+      dev.log('[LIBRARY_DEBUG] extracted=${list?.length ?? 0}', name: 'ApiService');
+      if (list != null && list.isNotEmpty) {
+        final results = <LibraryMaterialModel>[];
+        for (final m in list) {
+          try {
+            results.add(LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map)));
+          } catch (e) {
+            dev.log('[LIBRARY_DEBUG] parse err: $e', name: 'ApiService');
+          }
         }
-        final list = _extractListDeep(body);
-        if (list != null && list.isNotEmpty) {
-          dev.log('[LIBRARY] found ${list.length} items at $endpoint', name: 'ApiService');
-          final results = <LibraryMaterialModel>[];
-          for (final m in list) {
-            try {
-              results.add(LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map)));
-            } catch (e) {
-              dev.log('[LIBRARY] parse error for item: $e', name: 'ApiService');
+        if (results.isNotEmpty) return (materials: results, rawDebug: debug);
+      }
+    } on DioException catch (e) {
+      debug = 'HTTP_ERROR:${e.response?.statusCode} body:${e.response?.data}';
+      dev.log('[LIBRARY_DEBUG] $debug', name: 'ApiService');
+    } catch (e) {
+      debug = 'ERROR:$e';
+      dev.log('[LIBRARY_DEBUG] $debug', name: 'ApiService');
+    }
+    // Fall back to full multi-endpoint attempt
+    final materials = await getLibraryMaterials(gradeLevel: gradeLevel);
+    return (materials: materials, rawDebug: debug);
+  }
+
+  // Library — try every endpoint with and without grade_level params
+  Future<List<LibraryMaterialModel>> getLibraryMaterials({
+    int? subjectId,
+    String? gradeLevel,
+  }) async {
+    final endpoints = [
+      '/library',
+      '/student/library',
+      '/my-library',
+      '/study-materials',
+      '/student/study-materials',
+      '/materials',
+      '/resources',
+      '/files',
+    ];
+
+    // Build param sets: with grade_level variants first, then no params
+    final paramSets = <Map<String, dynamic>>[];
+    if (gradeLevel != null && gradeLevel.isNotEmpty) {
+      paramSets.add({'grade_level': gradeLevel});
+      paramSets.add({'class': gradeLevel});
+      paramSets.add({'form': gradeLevel});
+    }
+    paramSets.add({});
+
+    for (final endpoint in endpoints) {
+      for (final params in paramSets) {
+        try {
+          final queryParams = <String, dynamic>{...params};
+          if (subjectId != null) queryParams['subject_id'] = subjectId;
+
+          final response = await _dio.get(
+            endpoint,
+            queryParameters: queryParams.isEmpty ? null : queryParams,
+            options: Options(
+              receiveTimeout: const Duration(seconds: 30),
+              sendTimeout: const Duration(seconds: 15),
+            ),
+          );
+          final body = response.data;
+          dev.log('[LIBRARY] $endpoint params=$queryParams status=${response.statusCode} type=${body.runtimeType}', name: 'ApiService');
+          dev.log('[LIBRARY] body=${body.toString().length > 1000 ? body.toString().substring(0, 1000) : body}', name: 'ApiService');
+
+          final list = _extractListDeep(body);
+          dev.log('[LIBRARY] extracted list length=${list?.length ?? 0}', name: 'ApiService');
+
+          if (list != null && list.isNotEmpty) {
+            final results = <LibraryMaterialModel>[];
+            for (final m in list) {
+              try {
+                results.add(LibraryMaterialModel.fromJson(Map<String, dynamic>.from(m as Map)));
+              } catch (e) {
+                dev.log('[LIBRARY] parse error: $e item=$m', name: 'ApiService');
+              }
+            }
+            if (results.isNotEmpty) {
+              dev.log('[LIBRARY] SUCCESS: ${results.length} items at $endpoint params=$queryParams', name: 'ApiService');
+              return results;
             }
           }
-          if (results.isNotEmpty) return results;
+          // 200 but empty — try next param variant for same endpoint
+        } on DioException catch (e) {
+          final status = e.response?.statusCode;
+          dev.log('[LIBRARY] $endpoint params=$params status=$status body=${e.response?.data}', name: 'ApiService');
+          // Any HTTP error — skip to next endpoint (don't rethrow, library is non-critical)
+          break;
+        } catch (e) {
+          dev.log('[LIBRARY] $endpoint unexpected error: $e', name: 'ApiService');
+          break;
         }
-        dev.log('[LIBRARY] $endpoint returned empty or unknown structure', name: 'ApiService');
-      } on DioException catch (e) {
-        final status = e.response?.statusCode;
-        dev.log('[LIBRARY] $endpoint DioException status=$status err=${e.message}', name: 'ApiService');
-        if (status == 401 || status == 403) {
-          rethrow;
-        }
-        continue;
-      } catch (e) {
-        dev.log('[LIBRARY] $endpoint unexpected error: $e', name: 'ApiService');
-        continue;
       }
     }
+    dev.log('[LIBRARY] all endpoints exhausted, returning empty', name: 'ApiService');
     return [];
   }
 
   // Deep extraction — handles direct arrays, {data:[...]}, {data:{data:[...]}}, etc.
+  // Tries ALL keys in the map so it works regardless of what the server uses.
   List? _extractListDeep(dynamic body) {
     if (body is List) return body;
     if (body is! Map) return null;
-    // Try common top-level keys
-    const keys = [
+
+    // Priority keys tried first (most common)
+    const priorityKeys = [
       'data', 'materials', 'items', 'resources', 'files',
       'documents', 'study_materials', 'content', 'library', 'results',
+      'records', 'list', 'entries', 'uploads', 'attachments',
+      'books', 'media', 'collection', 'subjects', 'courses',
+      'notes', 'videos', 'pdfs', 'links', 'payload', 'response',
     ];
-    for (final key in keys) {
+
+    List<String> allKeys = [...priorityKeys];
+    // Add any remaining keys from the actual response not in priority list
+    for (final k in body.keys) {
+      if (!allKeys.contains(k.toString())) allKeys.add(k.toString());
+    }
+
+    for (final key in allKeys) {
       final val = body[key];
-      if (val is List) return val;
+      if (val is List && val.isNotEmpty) return val;
       // Handle Laravel pagination: {data: {data: [...]}}
       if (val is Map) {
         final nested = val['data'];
-        if (nested is List) return nested;
+        if (nested is List && nested.isNotEmpty) return nested;
+        // Three levels deep
+        if (nested is Map) {
+          final deepNested = nested['data'];
+          if (deepNested is List && deepNested.isNotEmpty) return deepNested;
+        }
+        // Also check all keys of the nested map
+        for (final nestedKey in val.keys) {
+          final nestedVal = val[nestedKey];
+          if (nestedVal is List && nestedVal.isNotEmpty) return nestedVal;
+        }
       }
     }
     return null;

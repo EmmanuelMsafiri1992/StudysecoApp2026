@@ -1,3 +1,4 @@
+import 'dart:developer' as dev;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/subject_model.dart';
 import '../../../data/services/api_service.dart';
@@ -41,35 +42,59 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
   Future<void> loadSubjects({String? form}) async {
     state = state.copyWith(isLoading: true, clearError: true, selectedForm: form);
     try {
-      final subjects = await _apiService.getEnrollmentSubjects(gradeLevel: form);
       final enrolledIds = _ref.read(authProvider).user?.enrolledSubjectIds ?? [];
-      // /enrollment/subjects has no counts; /subjects does, so merge them in by id.
-      final countsById = <int, SubjectModel>{};
+      dev.log('[LOAD_SUBJ] enrolledIds from user=$enrolledIds form=$form', name: 'SubjectsProvider');
+
+      // Priority 1: Extract enrolled subjects directly from /user profile (enrollment.subjects)
+      // This is the most reliable source — it contains exactly the user's enrolled subjects
+      List<SubjectModel> fromProfile = [];
       try {
-        for (final s in await _apiService.getSubjects(form: form)) {
-          countsById[s.id] = s;
-        }
+        fromProfile = await _apiService.getEnrolledSubjectsFromProfile();
+        dev.log('[LOAD_SUBJ] fromProfile count=${fromProfile.length}', name: 'SubjectsProvider');
       } catch (_) {}
-      final marked = subjects.map((s) {
-        final isEnrolled = enrolledIds.contains(s.id);
-        final counts = countsById[s.id];
-        return SubjectModel(
-          id: s.id,
-          name: s.name,
-          slug: s.slug,
-          description: s.description,
-          icon: s.icon,
-          color: s.color,
-          form: s.form,
-          isCore: s.isCore,
-          topicsCount: s.topicsCount > 0 ? s.topicsCount : (counts?.topicsCount ?? 0),
-          lessonsCount: s.lessonsCount > 0 ? s.lessonsCount : (counts?.lessonsCount ?? 0),
-          progressPercent: s.progressPercent,
-          isEnrolled: isEnrolled,
-        );
-      }).toList();
+
+      if (fromProfile.isNotEmpty) {
+        state = state.copyWith(subjects: fromProfile, isLoading: false);
+        return;
+      }
+
+      // Priority 2: Dedicated enrolled-subjects endpoints
+      List<SubjectModel> directEnrolled = [];
+      try {
+        directEnrolled = await _apiService.getMyEnrolledSubjects();
+        dev.log('[LOAD_SUBJ] directEnrolled count=${directEnrolled.length}', name: 'SubjectsProvider');
+      } catch (_) {}
+
+      if (directEnrolled.isNotEmpty) {
+        state = state.copyWith(subjects: directEnrolled, isLoading: false);
+        return;
+      }
+
+      // Priority 3: Fetch all subjects for form, filter by enrolled IDs
+      dev.log('[LOAD_SUBJ] falling back to /enrollment/subjects filter', name: 'SubjectsProvider');
+      final allSubjects = await _apiService.getEnrollmentSubjects(gradeLevel: form);
+      dev.log('[LOAD_SUBJ] allSubjects count=${allSubjects.length}', name: 'SubjectsProvider');
+
+      if (allSubjects.isEmpty && enrolledIds.isNotEmpty) {
+        // Try without grade_level param — some APIs ignore it or need no param
+        final fallback = await _apiService.getEnrollmentSubjects();
+        dev.log('[LOAD_SUBJ] fallback no-grade count=${fallback.length}', name: 'SubjectsProvider');
+        if (fallback.isNotEmpty) {
+          final marked = fallback.map((s) => enrolledIds.contains(s.id)
+              ? s.copyWithEnrolled(true)
+              : s).toList();
+          state = state.copyWith(subjects: marked, isLoading: false);
+          return;
+        }
+      }
+
+      final marked = allSubjects.map((s) =>
+          enrolledIds.contains(s.id) ? s.copyWithEnrolled(true) : s
+      ).toList();
+      dev.log('[LOAD_SUBJ] marked enrolled=${marked.where((s) => s.isEnrolled).length}', name: 'SubjectsProvider');
       state = state.copyWith(subjects: marked, isLoading: false);
     } catch (e) {
+      dev.log('[LOAD_SUBJ] error: $e', name: 'SubjectsProvider');
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
@@ -81,7 +106,76 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
   void filterByForm(String? form) {
     loadSubjects(form: form);
   }
+
+  // Used by enrollment screen — always loads ALL subjects for the form,
+  // then marks which ones the user is already enrolled in.
+  Future<void> loadAllSubjectsForForm({String? form}) async {
+    state = state.copyWith(isLoading: true, clearError: true, selectedForm: form);
+    try {
+      // Get enrolled IDs: prefer fresh from /user profile, fall back to cached user
+      List<int> enrolledIds = _ref.read(authProvider).user?.enrolledSubjectIds ?? [];
+      try {
+        final profileSubjects = await _apiService.getEnrolledSubjectsFromProfile();
+        if (profileSubjects.isNotEmpty) {
+          enrolledIds = profileSubjects.map((s) => s.id).toList();
+          dev.log('[ALL_SUBJ] enrolledIds from profile: $enrolledIds', name: 'SubjectsProvider');
+        }
+      } catch (e) {
+        dev.log('[ALL_SUBJ] could not get enrolled IDs from profile: $e — using cached $enrolledIds', name: 'SubjectsProvider');
+      }
+
+      dev.log('[ALL_SUBJ] loading all subjects for form=$form enrolledIds=$enrolledIds', name: 'SubjectsProvider');
+
+      // Try /enrollment/subjects with grade_level — returns all subjects for that form
+      List<SubjectModel> allSubjects = await _apiService.getEnrollmentSubjects(gradeLevel: form);
+      dev.log('[ALL_SUBJ] from /enrollment/subjects: ${allSubjects.length}', name: 'SubjectsProvider');
+
+      // If that returns empty, try /subjects
+      if (allSubjects.isEmpty) {
+        allSubjects = await _apiService.getSubjects(form: form);
+        dev.log('[ALL_SUBJ] from /subjects: ${allSubjects.length}', name: 'SubjectsProvider');
+      }
+
+      // If still empty, try without form param
+      if (allSubjects.isEmpty) {
+        allSubjects = await _apiService.getEnrollmentSubjects();
+        dev.log('[ALL_SUBJ] from /enrollment/subjects (no grade): ${allSubjects.length}', name: 'SubjectsProvider');
+      }
+
+      final marked = allSubjects.map((s) =>
+          enrolledIds.contains(s.id) ? s.copyWithEnrolled(true) : s
+      ).toList();
+      dev.log('[ALL_SUBJ] total=${marked.length} enrolled=${marked.where((s) => s.isEnrolled).length} unenrolled=${marked.where((s) => !s.isEnrolled).length}', name: 'SubjectsProvider');
+      state = state.copyWith(subjects: marked, isLoading: false);
+    } catch (e) {
+      dev.log('[ALL_SUBJ] error: $e', name: 'SubjectsProvider');
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
 }
+
+// Separate provider for the enrollment screen — always loads ALL subjects for
+// the user's form so unenrolled ones appear as "Available to Add".
+final allSubjectsProvider = StateNotifierProvider<SubjectsNotifier, SubjectsState>((ref) {
+  final notifier = SubjectsNotifier(ref.read(apiServiceProvider), ref);
+
+  ref.listen(authProvider, (previous, next) {
+    final prevUserId = previous?.user?.id;
+    final nextUserId = next.user?.id;
+    final userJustLoggedIn = prevUserId == null && nextUserId != null;
+    final formChanged = previous?.user?.form != next.user?.form;
+    if ((userJustLoggedIn || formChanged) && next.user != null) {
+      notifier.loadAllSubjectsForForm(form: next.user!.form);
+    }
+  });
+
+  final currentUser = ref.read(authProvider).user;
+  if (currentUser != null) {
+    notifier.loadAllSubjectsForForm(form: currentUser.form);
+  }
+
+  return notifier;
+});
 
 final subjectsProvider = StateNotifierProvider<SubjectsNotifier, SubjectsState>((ref) {
   final notifier = SubjectsNotifier(ref.read(apiServiceProvider), ref);

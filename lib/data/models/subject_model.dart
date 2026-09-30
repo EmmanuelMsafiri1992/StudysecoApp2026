@@ -37,6 +37,13 @@ class SubjectModel {
     return '';
   }
 
+  SubjectModel copyWithEnrolled(bool enrolled) => SubjectModel(
+    id: id, name: name, slug: slug, description: description,
+    icon: icon, color: color, form: form, isCore: isCore,
+    topicsCount: topicsCount, lessonsCount: lessonsCount,
+    progressPercent: progressPercent, isEnrolled: enrolled,
+  );
+
   factory SubjectModel.fromJson(Map<String, dynamic> json) {
     final slug = json['slug'] ?? json['code'] ?? json['id'].toString();
     return SubjectModel(

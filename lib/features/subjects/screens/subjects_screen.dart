@@ -31,23 +31,16 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
     final state = ref.watch(subjectsProvider);
     final user = ref.watch(authProvider).user;
     final userForm = user?.form;
+    final isApproved = user?.hasActiveSubscription ?? false;
     final enrolledIds = user?.enrolledSubjectIds ?? [];
 
-    String normalizeForm(String v) {
-      final s = v.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
-      final digits = RegExp(r'\d+').firstMatch(s)?.group(0);
-      return digits != null ? 'form$digits' : s;
-    }
+    // Only show subjects if the user has an active subscription (approved)
+    // Unapproved/new users should see the enroll empty state
+    final enrolled = isApproved
+        ? state.subjects.where((s) => s.isEnrolled).toList()
+        : <SubjectModel>[];
 
-    final enrolled = state.subjects.where((s) {
-      if (!s.isEnrolled) return false;
-      if (userForm != null && userForm.isNotEmpty && s.form.isNotEmpty) {
-        return normalizeForm(s.form) == normalizeForm(userForm);
-      }
-      return true;
-    }).toList();
-
-    final localEnrolledFromIds = enrolledIds.isNotEmpty && enrolled.isEmpty && state.subjects.isNotEmpty
+    final localEnrolledFromIds = isApproved && enrolledIds.isNotEmpty && enrolled.isEmpty && state.subjects.isNotEmpty
         ? state.subjects.where((s) => enrolledIds.contains(s.id)).toList()
         : <SubjectModel>[];
 
@@ -56,20 +49,23 @@ class _SubjectsScreenState extends ConsumerState<SubjectsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Subjects'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Add More Subjects',
+            onPressed: () => context.push(AppRoutes.enrollment),
+          ),
+        ],
       ),
       body: state.isLoading
           ? _LoadingGrid()
-          : (state.error != null && displayList.isEmpty)
-              ? _ErrorView(
-                  onRetry: () =>
-                      ref.read(subjectsProvider.notifier).loadSubjects(form: userForm))
-              : displayList.isEmpty
-                  ? (enrolledIds.isNotEmpty
-                      ? _ErrorView(
-                          onRetry: () => ref
-                              .read(subjectsProvider.notifier)
-                              .loadSubjects(form: userForm))
-                      : const _EmptyView())
+          : displayList.isEmpty
+              ? (isApproved && enrolledIds.isNotEmpty && state.error != null)
+                  ? _ErrorView(
+                      onRetry: () => ref
+                          .read(subjectsProvider.notifier)
+                          .loadSubjects(form: userForm))
+                  : _EmptyView(onEnroll: () => context.push(AppRoutes.enrollment))
                   : Column(
                       children: [
                         Expanded(
@@ -286,7 +282,8 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _EmptyView extends StatelessWidget {
-  const _EmptyView();
+  final VoidCallback onEnroll;
+  const _EmptyView({required this.onEnroll});
 
   @override
   Widget build(BuildContext context) {
@@ -307,9 +304,22 @@ class _EmptyView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Your subjects will appear here once your enrolment is active on studyseco.com',
+              'Enroll in subjects to start learning',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onEnroll,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Enroll in Subjects'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
             ),
           ],
         ),
