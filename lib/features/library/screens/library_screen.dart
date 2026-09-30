@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
@@ -44,7 +45,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   onRetry: () => ref.read(libraryProvider.notifier).load(),
                 )
               : state.materials.isEmpty
-                  ? _EmptyView()
+                  ? const _EmptyView()
                   : RefreshIndicator(
                       onRefresh: () => ref.read(libraryProvider.notifier).load(),
                       color: AppColors.primary,
@@ -79,23 +80,23 @@ class _MaterialCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: _typeColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Center(
-                  child: Text(
-                    material.typeLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: _typeColor,
-                    ),
-                  ),
-                ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: material.thumbnailUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: material.thumbnailUrl!,
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.cover,
+                        errorWidget: (ctx, err, st) => _TypeBadge(
+                          label: material.typeLabel,
+                          color: _typeColor,
+                        ),
+                      )
+                    : _TypeBadge(
+                        label: material.typeLabel,
+                        color: _typeColor,
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -190,12 +191,16 @@ class _MaterialCard extends StatelessWidget {
 }
 
 class _EmptyView extends ConsumerWidget {
+  const _EmptyView();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Center(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          const SizedBox(height: 40),
           const Icon(Icons.library_books_outlined, size: 56, color: AppColors.textMuted),
           const SizedBox(height: 16),
           const Text(
@@ -264,6 +269,31 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
+class _TypeBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _TypeBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 52,
+      height: 52,
+      color: color.withValues(alpha: 0.15),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LoadingList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -273,7 +303,7 @@ class _LoadingList extends StatelessWidget {
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: 6,
-        itemBuilder: (_, __) => Container(
+        itemBuilder: (context, index) => Container(
           margin: const EdgeInsets.only(bottom: 12),
           height: 80,
           decoration: BoxDecoration(

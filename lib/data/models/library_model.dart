@@ -8,6 +8,7 @@ class LibraryMaterialModel {
   final String? subjectName;
   final String? teacherName;
   final String? fileUrl;
+  final String? thumbnailUrl;
   final int viewCount;
   final DateTime createdAt;
 
@@ -21,6 +22,7 @@ class LibraryMaterialModel {
     this.subjectName,
     this.teacherName,
     this.fileUrl,
+    this.thumbnailUrl,
     this.viewCount = 0,
     required this.createdAt,
   });
@@ -43,6 +45,12 @@ class LibraryMaterialModel {
     final id = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '') ?? 0;
     final subject = json['subject'] as Map?;
     final teacher = json['teacher'] as Map? ?? json['uploaded_by'] as Map?;
+    final rawThumb = json['thumbnail_url'] ?? json['thumbnail'];
+    String? thumbnailUrl;
+    if (rawThumb != null && rawThumb.toString().isNotEmpty) {
+      final s = rawThumb.toString();
+      thumbnailUrl = s.startsWith('http') ? s : 'https://studyseco.com$s';
+    }
     return LibraryMaterialModel(
       id: id,
       title: json['title'] ?? json['name'] ?? '',
@@ -53,6 +61,7 @@ class LibraryMaterialModel {
       subjectName: json['subject_name'] ?? subject?['name'],
       teacherName: json['teacher_name'] ?? json['uploader_name'] ?? teacher?['name'],
       fileUrl: fileUrl,
+      thumbnailUrl: thumbnailUrl,
       viewCount: json['view_count'] ?? json['views'] ?? 0,
       createdAt: createdAt,
     );

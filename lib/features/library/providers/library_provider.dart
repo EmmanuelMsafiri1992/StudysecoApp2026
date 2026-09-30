@@ -31,13 +31,16 @@ class LibraryState {
 
 class LibraryNotifier extends StateNotifier<LibraryState> {
   final ApiService _api;
+  final Ref _ref;
 
-  LibraryNotifier(this._api) : super(const LibraryState());
+  LibraryNotifier(this._api, this._ref) : super(const LibraryState());
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final materials = await _api.getLibraryMaterials();
+      final user = _ref.read(authProvider).user;
+      final gradeLevel = user?.form;
+      final materials = await _api.getLibraryMaterials(gradeLevel: gradeLevel);
       state = state.copyWith(materials: materials, isLoading: false);
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
@@ -47,22 +50,18 @@ class LibraryNotifier extends StateNotifier<LibraryState> {
 }
 
 final libraryProvider = StateNotifierProvider<LibraryNotifier, LibraryState>((ref) {
-  final notifier = LibraryNotifier(ref.read(apiServiceProvider));
+  final notifier = LibraryNotifier(ref.read(apiServiceProvider), ref);
 
   ref.listen(authProvider, (previous, next) {
     final prevUserId = previous?.user?.id;
     final nextUserId = next.user?.id;
     final userJustLoggedIn = prevUserId == null && nextUserId != null;
-    final prevIds = previous?.user?.enrolledSubjectIds ?? [];
-    final nextIds = next.user?.enrolledSubjectIds ?? [];
-    final idsChanged = prevIds.length != nextIds.length ||
-        !prevIds.every((id) => nextIds.contains(id));
-    if (userJustLoggedIn || (idsChanged && nextUserId != null)) {
+    final formChanged = previous?.user?.form != next.user?.form;
+    if ((userJustLoggedIn || formChanged) && nextUserId != null) {
       notifier.load();
     }
   });
 
-  // Only load immediately if user is already logged in
   final currentUser = ref.read(authProvider).user;
   if (currentUser != null) {
     notifier.load();
