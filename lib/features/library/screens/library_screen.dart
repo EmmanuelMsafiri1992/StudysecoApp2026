@@ -181,15 +181,20 @@ class _MaterialCard extends StatelessWidget {
     if (material.fileUrl == null) return;
     final uri = Uri.tryParse(material.fileUrl!);
     if (uri == null) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open file'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open file'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 }
