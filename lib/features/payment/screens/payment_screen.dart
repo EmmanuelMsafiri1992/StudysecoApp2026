@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -646,6 +647,23 @@ class _Step3Confirm extends ConsumerStatefulWidget {
 class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
   final _refCtrl = TextEditingController();
   File? _proofFile;
+  String _paymentRef = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(authProvider).user;
+      final userId = user?.id ?? 0;
+      final now = DateTime.now();
+      final date =
+          '${now.year % 100}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+      _paymentRef = 'SS-$userId-$date';
+      if (_refCtrl.text.isEmpty) {
+        setState(() => _refCtrl.text = _paymentRef);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -850,9 +868,9 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
                   ),
                   const SizedBox(height: 10),
                   if (method.type == 'bank_transfer' || (!method.isOnline && method.type != 'mobile_money'))
-                    _BankDetailsWidget()
+                    _BankDetailsWidget(reference: _paymentRef)
                   else if (method.name.toLowerCase().contains('mukuru'))
-                    _MukuruDetailsWidget()
+                    _MukuruDetailsWidget(reference: _paymentRef)
                   else
                     Text(
                       method.accountDetails ??
@@ -870,7 +888,7 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Transaction Reference (optional)',
+                  'Payment Reference',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -881,9 +899,12 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
                   controller: _refCtrl,
                   style: const TextStyle(color: AppColors.textPrimary),
                   decoration: InputDecoration(
-                    hintText: 'e.g., TXN123456',
+                    hintText: 'e.g., SS-42-261020',
                     hintStyle:
                         const TextStyle(color: AppColors.textMuted),
+                    helperText: 'Use the reference shown above when paying',
+                    helperStyle: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 11),
                     prefixIcon: const Icon(Icons.tag_rounded,
                         color: AppColors.textMuted, size: 20),
                   ),
@@ -1111,27 +1132,34 @@ class _BankDetailRow extends StatelessWidget {
 }
 
 class _BankDetailsWidget extends StatelessWidget {
+  final String reference;
+  const _BankDetailsWidget({required this.reference});
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
+      children: [
+        const Text(
           'Standard Bank — MWK Transfer',
           style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary),
         ),
-        SizedBox(height: 8),
-        _BankDetailRow(label: 'Account Name', value: 'Emphx Innovative Solutions Limited'),
-        _BankDetailRow(label: 'Account Number', value: '9100008695854'),
-        _BankDetailRow(label: 'Currency', value: 'MWK'),
-        _BankDetailRow(label: 'Branch', value: 'Lilongwe'),
-        _BankDetailRow(label: 'Branch Code', value: '101016'),
-        _BankDetailRow(label: 'Swift Code', value: 'SBICMWMX'),
-        SizedBox(height: 10),
-        Text(
+        const SizedBox(height: 8),
+        const _BankDetailRow(label: 'Account Name', value: 'Emphx Innovative Solutions Limited'),
+        const _BankDetailRow(label: 'Account Number', value: '9100008695854'),
+        const _BankDetailRow(label: 'Currency', value: 'MWK'),
+        const _BankDetailRow(label: 'Branch', value: 'Lilongwe'),
+        const _BankDetailRow(label: 'Branch Code', value: '101016'),
+        const _BankDetailRow(label: 'Swift Code', value: 'SBICMWMX'),
+        if (reference.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _PaymentReferenceBox(reference: reference),
+        ],
+        const SizedBox(height: 10),
+        const Text(
           'After transferring, upload proof of payment below.',
           style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
         ),
@@ -1141,28 +1169,98 @@ class _BankDetailsWidget extends StatelessWidget {
 }
 
 class _MukuruDetailsWidget extends StatelessWidget {
+  final String reference;
+  const _MukuruDetailsWidget({required this.reference});
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
+      children: [
+        const Text(
           'Bank Zero — Mukuru',
           style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary),
         ),
-        SizedBox(height: 8),
-        _BankDetailRow(label: 'Bank', value: 'Bank Zero - Mukuru'),
-        _BankDetailRow(label: 'Account Number', value: '70012910209'),
-        _BankDetailRow(label: 'Branch Code', value: '435000'),
-        SizedBox(height: 10),
-        Text(
+        const SizedBox(height: 8),
+        const _BankDetailRow(label: 'Bank', value: 'Bank Zero - Mukuru'),
+        const _BankDetailRow(label: 'Account Number', value: '70012910209'),
+        const _BankDetailRow(label: 'Branch Code', value: '435000'),
+        if (reference.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _PaymentReferenceBox(reference: reference),
+        ],
+        const SizedBox(height: 10),
+        const Text(
           'After sending, upload proof of payment below.',
           style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
         ),
       ],
+    );
+  }
+}
+
+class _PaymentReferenceBox extends StatelessWidget {
+  final String reference;
+  const _PaymentReferenceBox({required this.reference});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your Payment Reference',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  reference,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      letterSpacing: 0.5),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: reference));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Reference copied to clipboard'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.copy_rounded,
+                    size: 18, color: AppColors.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Use this as your payment reference when transferring.',
+            style: TextStyle(
+                fontSize: 11, color: AppColors.textSecondary, height: 1.3),
+          ),
+        ],
+      ),
     );
   }
 }

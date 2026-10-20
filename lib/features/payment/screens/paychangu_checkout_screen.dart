@@ -39,8 +39,13 @@ class _PayChanguCheckoutScreenState
           onPageStarted: (_) {
             if (mounted) setState(() => _isLoading = true);
           },
-          onPageFinished: (_) {
+          onPageFinished: (url) {
             if (mounted) setState(() => _isLoading = false);
+            // Redirect window.open() back into this WebView so PayChangu's
+            // sub-pages (mobile money, card forms) never open in Chrome.
+            _controller.runJavaScript(
+              'window.open = function(u,t,f){ window.location.href = u; return window; };',
+            );
           },
           onNavigationRequest: (request) {
             final uri = Uri.tryParse(request.url);
@@ -51,7 +56,7 @@ class _PayChanguCheckoutScreenState
               _finish();
               return NavigationDecision.prevent;
             }
-            // tel:, intent:, mobile money / banking app links
+            // tel:, intent:, mobile money / banking app deep links
             if (uri.scheme != 'http' && uri.scheme != 'https') {
               launchUrl(uri, mode: LaunchMode.externalApplication)
                   .catchError((_) => false);

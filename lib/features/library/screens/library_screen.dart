@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/library_model.dart';
 import '../providers/library_provider.dart';
+import 'library_pdf_viewer.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -159,7 +159,7 @@ class _MaterialCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.open_in_new_rounded,
+              const Icon(Icons.menu_book_rounded,
                   size: 18, color: AppColors.textMuted),
             ],
           ),
@@ -179,23 +179,14 @@ class _MaterialCard extends StatelessWidget {
 
   Future<void> _openFile(BuildContext context) async {
     if (material.fileUrl == null) return;
-    final uri = Uri.tryParse(material.fileUrl!);
-    if (uri == null) return;
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched && context.mounted) {
-        await launchUrl(uri, mode: LaunchMode.platformDefault);
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not open file'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LibraryPdfViewer(
+          fileUrl: material.fileUrl!,
+          title: material.title,
+        ),
+      ),
+    );
   }
 }
 
