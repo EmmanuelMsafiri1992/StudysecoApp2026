@@ -362,28 +362,26 @@ class ApiService {
     return [];
   }
 
-  Future<PaystackInitResponse> initializePaystackPayment({
-    required String email,
-    required double amount,
-    required String currency,
-    required String reference,
+  /// Opens a PayChangu checkout session. The server works out the amount.
+  Future<PayChanguCheckout> initializePayChanguPayment({
+    required List<int> subjectIds,
     required int durationMonths,
+    required String currency,
   }) async {
-    final response = await _dio.post('/payments/paystack/initialize', data: {
-      'email': email,
-      'amount': amount,
-      'currency': currency,
-      'reference': reference,
+    final response = await _dio.post('/payments/paychangu/initialize', data: {
+      'subject_ids': subjectIds,
       'duration_months': durationMonths,
+      'currency': currency,
     });
-    return PaystackInitResponse.fromJson(response.data);
+    return PayChanguCheckout.fromJson(response.data);
   }
 
-  Future<Map<String, dynamic>> verifyPaystackPayment(String reference) async {
-    final response = await _dio.post('/payments/paystack/verify', data: {
-      'reference': reference,
+  /// Returns 'success', 'pending' or 'failed'.
+  Future<String> verifyPayChanguPayment(String txRef) async {
+    final response = await _dio.post('/payments/paychangu/verify', data: {
+      'tx_ref': txRef,
     });
-    return response.data;
+    return response.data['data']?['status']?.toString() ?? 'pending';
   }
 
   Future<Map<String, dynamic>> submitManualPayment({

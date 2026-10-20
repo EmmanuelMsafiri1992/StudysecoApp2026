@@ -21,7 +21,8 @@ class PaymentMethodModel {
     this.currencies = const [],
   });
 
-  bool get isPaystack => type == 'paystack';
+  /// PayChangu hosted checkout: mobile money, card and bank, confirmed automatically.
+  bool get isOnline => type == 'paychangu';
   bool get isInternational => region == 'international';
 
   factory PaymentMethodModel.fromJson(Map<String, dynamic> json) {
@@ -182,14 +183,16 @@ class PaymentModel {
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
     return PaymentModel(
       id: json['id'],
-      userId: json['user_id'],
-      reference: json['reference'],
-      amount: (json['amount'] ?? 0).toDouble(),
+      userId: json['user_id'] ?? 0,
+      reference: (json['reference'] ?? json['reference_number'] ?? '').toString(),
+      amount: double.tryParse('${json['amount'] ?? 0}') ?? 0,
       currency: json['currency'] ?? 'USD',
       status: json['status'] ?? 'pending',
       method: json['method'],
       durationMonths: json['duration_months'],
-      paidAt: json['paid_at'] != null ? DateTime.parse(json['paid_at']) : null,
+      paidAt: json['paid_at'] != null
+          ? DateTime.parse(json['paid_at'])
+          : (json['verified_at'] != null ? DateTime.parse(json['verified_at']) : null),
       createdAt: DateTime.parse(json['created_at']),
       expiresAt: json['expires_at'] != null
           ? DateTime.parse(json['expires_at'])
@@ -198,29 +201,26 @@ class PaymentModel {
   }
 }
 
-class PaystackInitResponse {
-  final bool status;
-  final String message;
-  final String authorizationUrl;
-  final String accessCode;
-  final String reference;
+class PayChanguCheckout {
+  final String checkoutUrl;
+  final String txRef;
+  final double amount;
+  final String currency;
 
-  PaystackInitResponse({
-    required this.status,
-    required this.message,
-    required this.authorizationUrl,
-    required this.accessCode,
-    required this.reference,
+  PayChanguCheckout({
+    required this.checkoutUrl,
+    required this.txRef,
+    required this.amount,
+    required this.currency,
   });
 
-  factory PaystackInitResponse.fromJson(Map<String, dynamic> json) {
+  factory PayChanguCheckout.fromJson(Map<String, dynamic> json) {
     final data = json['data'] ?? {};
-    return PaystackInitResponse(
-      status: json['status'] ?? false,
-      message: json['message'] ?? '',
-      authorizationUrl: data['authorization_url'] ?? '',
-      accessCode: data['access_code'] ?? '',
-      reference: data['reference'] ?? '',
+    return PayChanguCheckout(
+      checkoutUrl: data['checkout_url'] ?? '',
+      txRef: data['tx_ref'] ?? '',
+      amount: double.tryParse('${data['amount'] ?? 0}') ?? 0,
+      currency: data['currency'] ?? 'MWK',
     );
   }
 }

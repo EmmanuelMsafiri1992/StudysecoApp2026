@@ -6,9 +6,9 @@ class AppConstants {
     'BASE_URL',
     defaultValue: 'https://studyseco.com/api',
   );
-  static const String paystackPublicKey = 'pk_live_YOUR_PAYSTACK_PUBLIC_KEY';
-  static const String paystackBaseUrl = 'https://api.paystack.co';
-  static const String paystackCallbackUrl = 'https://studyseco.com/payment/callback';
+  // PayChangu redirects the checkout here when it finishes (see backend PayChanguController)
+  static const String payChanguCallbackPath = '/payments/paychangu/callback';
+  static const String payChanguReturnPath = '/payments/paychangu/return';
 
   static const List<String> forms = ['Form 1', 'Form 2', 'Form 3', 'Form 4'];
 

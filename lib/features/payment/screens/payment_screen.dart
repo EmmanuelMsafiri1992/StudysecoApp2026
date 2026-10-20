@@ -10,7 +10,7 @@ import '../../../data/models/payment_model.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../providers/payment_provider.dart';
 import '../../../shared/widgets/app_button.dart';
-import 'paystack_webview_screen.dart';
+import 'paychangu_checkout_screen.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -571,8 +571,8 @@ class _MethodCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                method.isPaystack
-                    ? Icons.credit_card_rounded
+                method.isOnline
+                    ? Icons.flash_on_rounded
                     : method.type == 'bank_transfer'
                         ? Icons.account_balance_rounded
                         : Icons.phone_android_rounded,
@@ -606,7 +606,7 @@ class _MethodCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (method.isPaystack)
+            if (method.isOnline)
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 6, vertical: 2),
@@ -664,36 +664,96 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
     final method = state.selectedMethod!;
     final user = ref.read(authProvider).user;
 
-    if (method.isPaystack) {
-      final init = await ref
-          .read(paymentFlowProvider.notifier)
-          .initializePaystack(user?.email ?? '');
+    if (method.isOnline) {
+      final pendingSubjects = ref.read(pendingEnrollmentSubjectsProvider);
+      final subjectIds = pendingSubjects.isNotEmpty
+          ? pendingSubjects
+          : (user?.enrolledSubjectIds ?? const <int>[]);
+      if (subjectIds.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Choose your subjects first, then pay.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        context.go('/enrollment');
+        return;
+      }
+
+      final notifier = ref.read(paymentFlowProvider.notifier);
+      final checkout = await notifier.initializePayChangu(subjectIds);
       if (!mounted) return;
-      if (init == null) {
+      if (checkout == null) {
         final err = ref.read(paymentFlowProvider).error;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(err ?? 'Failed to initialize payment. Please try again.'),
+            content: Text(err ?? 'Failed to start payment. Please try again.'),
             backgroundColor: AppColors.error,
           ),
         );
         return;
       }
 
-      final success = await Navigator.push<bool>(
+      // The server sets the price; make sure the student agrees if it differs
+      // from what this screen showed (e.g. PayChangu only charges MWK or USD).
+      final shown = state.selectedDuration!.price;
+      if (checkout.currency != state.currency ||
+          (checkout.amount - shown).abs() >= 1) {
+        final symbol = AppConstants.currencySymbols[checkout.currency] ??
+            checkout.currency;
+        final proceed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('Confirm Amount'),
+            content: Text(
+              'You will be charged $symbol${checkout.amount.toStringAsFixed(checkout.currency == 'MWK' ? 0 : 2)} ${checkout.currency}.',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Continue')),
+            ],
+          ),
+        );
+        if (proceed != true || !mounted) return;
+      }
+
+      final status = await Navigator.push<String>(
         context,
         MaterialPageRoute(
-          builder: (_) => PaystackWebViewScreen(
-            authorizationUrl: init.authorizationUrl,
-            reference: init.reference,
+          builder: (_) => PayChanguCheckoutScreen(
+            checkoutUrl: checkout.checkoutUrl,
+            txRef: checkout.txRef,
           ),
         ),
       );
-      if (success == true && mounted) {
+      if (!mounted) return;
+      if (status == 'success') {
+        // Unlock content right away; isSuccess already shows the success view.
+        ref.read(pendingEnrollmentSubjectsProvider.notifier).state = [];
+        ref.invalidate(paymentHistoryProvider);
+        await ref.read(authProvider.notifier).refreshProfileSilently();
+      } else if (status == 'pending') {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => _PendingApprovalDialog(),
+          builder: (_) => _PendingApprovalDialog(
+            title: 'Confirming Payment',
+            message:
+                'We are still waiting for PayChangu to confirm your payment. If you approved it, your subjects will unlock automatically within a few minutes.',
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment was not completed. You have not been charged.'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } else {
@@ -770,7 +830,7 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
               ],
             ),
           ).animate().fadeIn(delay: 100.ms),
-          if (!method.isPaystack) ...[
+          if (!method.isOnline) ...[
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(16),
@@ -789,7 +849,7 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
                         color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 10),
-                  if (method.type == 'bank_transfer' || (!method.isPaystack && method.type != 'mobile_money'))
+                  if (method.type == 'bank_transfer' || (!method.isOnline && method.type != 'mobile_money'))
                     _BankDetailsWidget()
                   else if (method.name.toLowerCase().contains('mukuru'))
                     _MukuruDetailsWidget()
@@ -878,8 +938,8 @@ class _Step3ConfirmState extends ConsumerState<_Step3Confirm> {
           ],
           const SizedBox(height: 24),
           GradientButton(
-            label: method.isPaystack
-                ? 'Pay with Paystack'
+            label: method.isOnline
+                ? 'Pay Now'
                 : 'Submit Payment',
             onTap: _pay,
             isLoading: state.isLoading,
@@ -1108,6 +1168,15 @@ class _MukuruDetailsWidget extends StatelessWidget {
 }
 
 class _PendingApprovalDialog extends ConsumerWidget {
+  final String title;
+  final String message;
+
+  const _PendingApprovalDialog({
+    this.title = 'Payment Submitted!',
+    this.message =
+        'Your payment is awaiting approval. You will receive access once it has been confirmed.',
+  });
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return AlertDialog(
@@ -1128,18 +1197,18 @@ class _PendingApprovalDialog extends ConsumerWidget {
                 color: AppColors.accent, size: 36),
           ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 16),
-          const Text(
-            'Payment Submitted!',
-            style: TextStyle(
+          Text(
+            title,
+            style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Your payment is awaiting approval. You will receive access once it has been confirmed.',
+          Text(
+            message,
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
           ),
           const SizedBox(height: 20),
           GradientButton(

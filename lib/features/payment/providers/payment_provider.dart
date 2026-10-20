@@ -26,7 +26,7 @@ class PaymentFlowState {
   final PaymentMethodModel? selectedMethod;
   final bool isLoading;
   final String? error;
-  final PaystackInitResponse? paystackInit;
+  final PayChanguCheckout? checkout;
   final bool isSuccess;
   final String currency;
 
@@ -36,7 +36,7 @@ class PaymentFlowState {
     this.selectedMethod,
     this.isLoading = false,
     this.error,
-    this.paystackInit,
+    this.checkout,
     this.isSuccess = false,
     this.currency = 'MWK',
   });
@@ -47,7 +47,7 @@ class PaymentFlowState {
     PaymentMethodModel? selectedMethod,
     bool? isLoading,
     String? error,
-    PaystackInitResponse? paystackInit,
+    PayChanguCheckout? checkout,
     bool? isSuccess,
     String? currency,
     bool clearError = false,
@@ -59,7 +59,7 @@ class PaymentFlowState {
       selectedMethod: selectedMethod ?? this.selectedMethod,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
-      paystackInit: clearInit ? null : (paystackInit ?? this.paystackInit),
+      checkout: clearInit ? null : (checkout ?? this.checkout),
       isSuccess: isSuccess ?? this.isSuccess,
       currency: currency ?? this.currency,
     );
@@ -89,37 +89,37 @@ class PaymentFlowNotifier extends StateNotifier<PaymentFlowState> {
     }
   }
 
-  Future<PaystackInitResponse?> initializePaystack(String email) async {
+  Future<PayChanguCheckout?> initializePayChangu(List<int> subjectIds) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final ref = 'SS_${DateTime.now().millisecondsSinceEpoch}';
-      final init = await _apiService.initializePaystackPayment(
-        email: email,
-        amount: state.selectedDuration!.price,
-        currency: state.currency,
-        reference: ref,
+      final checkout = await _apiService.initializePayChanguPayment(
+        subjectIds: subjectIds,
         durationMonths: state.selectedDuration!.months,
+        currency: state.currency,
       );
-      state = state.copyWith(paystackInit: init, isLoading: false);
-      return init;
+      if (checkout.checkoutUrl.isEmpty) throw Exception('No checkout URL');
+      state = state.copyWith(checkout: checkout, isLoading: false);
+      return checkout;
     } catch (e) {
-      state = state.copyWith(
-          isLoading: false, error: 'Failed to initialize payment');
+      String msg = 'Failed to start payment. Please try again.';
+      if (e is DioException && e.response?.data is Map) {
+        msg = e.response?.data['message']?.toString() ?? msg;
+      }
+      state = state.copyWith(isLoading: false, error: msg);
       return null;
     }
   }
 
-  Future<bool> verifyPaystack(String reference) async {
+  /// Asks the server to confirm with PayChangu. Returns 'success', 'pending' or 'failed'.
+  Future<String> verifyPayChangu(String txRef) async {
     state = state.copyWith(isLoading: true);
     try {
-      final result = await _apiService.verifyPaystackPayment(reference);
-      final success = result['data']?['status'] == 'success' ||
-          result['status'] == true;
-      state = state.copyWith(isLoading: false, isSuccess: success);
-      return success;
+      final status = await _apiService.verifyPayChanguPayment(txRef);
+      state = state.copyWith(isLoading: false, isSuccess: status == 'success');
+      return status;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Payment verification failed');
-      return false;
+      state = state.copyWith(isLoading: false);
+      return 'pending';
     }
   }
 
