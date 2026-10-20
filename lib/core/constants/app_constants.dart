@@ -6,6 +6,10 @@ class AppConstants {
     'BASE_URL',
     defaultValue: 'https://studyseco.com/api',
   );
+  // Free trial offered at sign-up (backend: MobileEnrollmentController::startTrial)
+  static const int trialDays = 7;
+  static const int maxTrialSubjects = 3;
+
   // PayChangu redirects the checkout here when it finishes (see backend PayChanguController)
   static const String payChanguCallbackPath = '/payments/paychangu/callback';
   static const String payChanguReturnPath = '/payments/paychangu/return';

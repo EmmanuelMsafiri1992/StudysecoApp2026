@@ -23,6 +23,7 @@ import '../../features/profile/screens/profile_screen.dart';
 import '../../features/achievements/screens/achievements_screen.dart';
 import '../../features/enrollment/screens/enrollment_screen.dart';
 import '../../features/payment/screens/payment_screen.dart';
+import '../../features/payment/providers/payment_provider.dart';
 import '../../features/library/screens/library_screen.dart';
 import '../../features/payment/screens/payment_history_screen.dart';
 
@@ -77,6 +78,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
       if (isAuthenticated && isAuthRoute) {
+        // Chose "Pay Now" at the end of sign-up
+        if (state.matchedLocation == AppRoutes.register &&
+            ref.read(pendingEnrollmentSubjectsProvider).isNotEmpty) {
+          return AppRoutes.payment;
+        }
         return AppRoutes.dashboard;
       }
       return null;

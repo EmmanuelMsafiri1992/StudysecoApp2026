@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../providers/auth_provider.dart';
+import '../../payment/providers/payment_provider.dart';
 import '../../subjects/providers/subjects_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -70,11 +71,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  bool _hasSelection() {
+    if (_selectedSubjectIds.isNotEmpty) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Please select at least one subject'),
+          backgroundColor: AppColors.error),
+    );
+    return false;
+  }
+
+  /// Finishes sign-up and opens the payment screen for the chosen subjects
+  /// (the router sends a new account with pending subjects to /payment).
+  void _payNow() {
+    if (!_hasSelection()) return;
+    ref.read(pendingEnrollmentSubjectsProvider.notifier).state =
+        _selectedSubjectIds.toList();
+    ref.read(authProvider.notifier).finishRegistration();
+  }
+
   Future<void> _enroll() async {
-    if (_selectedSubjectIds.isEmpty) {
+    if (!_hasSelection()) return;
+    if (_selectedSubjectIds.length > AppConstants.maxTrialSubjects) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please select at least one subject'),
+            content: Text(
+                'The free trial covers up to ${AppConstants.maxTrialSubjects} subjects. Pay now to unlock them all.'),
             backgroundColor: AppColors.error),
       );
       return;
@@ -250,8 +272,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                         const SizedBox(height: 24),
                         GradientButton(
-                          label: 'Finish Setup (${_selectedSubjectIds.length} selected)',
+                          label: 'Pay Now (${_selectedSubjectIds.length} selected)',
+                          onTap: authState.isLoading ? null : _payNow,
+                        ),
+                        const SizedBox(height: 6),
+                        const Center(
+                          child: Text(
+                            'Airtel Money, TNM Mpamba, card or bank',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textMuted),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        AppButton(
+                          label: 'Start ${AppConstants.trialDays}-Day Free Trial',
                           onTap: _enroll,
+                          isOutlined: true,
                           isLoading: authState.isLoading,
                         ),
                         const SizedBox(height: 10),
