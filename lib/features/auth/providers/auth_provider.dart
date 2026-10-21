@@ -110,44 +110,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isRegistering: false);
   }
 
-  Future<void> enrollSubjects(List<int> subjectIds, {String? form}) async {
-    state = state.copyWith(isLoading: true);
-    try {
-      await _repository.createEnrollment(
-        subjectIds: subjectIds,
-        personalDetails: {'form': form ?? '', 'grade_level': form ?? ''},
-      );
-      try {
-        final freshUser = await _repository.getProfile();
-        final existing = state.user;
-        final serverIds = freshUser.enrolledSubjectIds;
-        final mergedIds = serverIds.isNotEmpty
-            ? serverIds
-            : {...(existing?.enrolledSubjectIds ?? []), ...subjectIds}.toList();
-        final merged = freshUser.copyWith(
-          form: (freshUser.form != null && freshUser.form!.isNotEmpty) ? freshUser.form : (existing?.form ?? form),
-          currency: (freshUser.currency != null && freshUser.currency!.isNotEmpty) ? freshUser.currency : existing?.currency,
-          enrolledSubjectIds: mergedIds,
-        );
-        await _repository.saveUser(merged);
-        state = state.copyWith(user: merged, isLoading: false, isRegistering: false);
-      } catch (_) {
-        final existing = state.user;
-        if (existing != null) {
-          final mergedIds = {...(existing.enrolledSubjectIds), ...subjectIds}.toList();
-          final updated = existing.copyWith(enrolledSubjectIds: mergedIds);
-          await _repository.saveUser(updated);
-          state = state.copyWith(user: updated, isLoading: false, isRegistering: false);
-        } else {
-          state = state.copyWith(isLoading: false, isRegistering: false);
-        }
-      }
-    } catch (e) {
-      state = state.copyWith(isLoading: false, isRegistering: false, error: _parseError(e));
-    }
-  }
-
-  Future<bool> register(Map<String, dynamic> data, {List<int>? subjectIds}) async {
+  Future<bool> register(Map<String, dynamic> data) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final registeredUser = await _repository.register(data);
@@ -157,32 +120,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         form: registeredUser.form ?? form,
         currency: registeredUser.currency ?? currency,
       );
-      if (subjectIds != null && subjectIds.isNotEmpty) {
-        try {
-          await _repository.createEnrollment(
-            subjectIds: subjectIds,
-            personalDetails: {
-              'form': form ?? '',
-              'grade_level': form ?? '',
-            },
-          );
-        } catch (_) {}
-        try {
-          final refreshed = await _repository.getProfile();
-          final merged = refreshed.copyWith(
-            form: refreshed.form ?? form,
-            currency: refreshed.currency ?? currency,
-          );
-          await _repository.saveUser(merged);
-          state = state.copyWith(user: merged, isLoading: false);
-        } catch (_) {
-          await _repository.saveUser(userWithMeta);
-          state = state.copyWith(user: userWithMeta, isLoading: false);
-        }
-      } else {
-        await _repository.saveUser(userWithMeta);
-        state = state.copyWith(user: userWithMeta, isLoading: false);
-      }
+      await _repository.saveUser(userWithMeta);
+      state = state.copyWith(user: userWithMeta, isLoading: false);
       return true;
     } catch (e) {
       state = state.copyWith(

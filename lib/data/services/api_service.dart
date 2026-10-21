@@ -398,7 +398,6 @@ class ApiService {
     final endpoints = [
       '/payments/manual',
       '/enrollment/payment',
-      '/enrollment/trial',
     ];
 
     final map = <String, dynamic>{
@@ -462,19 +461,6 @@ class ApiService {
     }
   }
 
-  Future<EnrollmentModel> createEnrollment({
-    required List<int> subjectIds,
-    required Map<String, dynamic> personalDetails,
-  }) async {
-    final gradeLevel = personalDetails['grade_level'] ?? personalDetails['form'];
-    final response = await _dio.post('/enrollment/trial', data: {
-      'subject_ids': subjectIds,
-      if (gradeLevel != null && gradeLevel.toString().isNotEmpty)
-        'grade_level': gradeLevel,
-    });
-    final raw = response.data['enrollment'] ?? response.data['data'] ?? response.data;
-    return EnrollmentModel.fromJson(Map<String, dynamic>.from(raw as Map));
-  }
 
   // Community
   Future<List<CommunityPostModel>> getCommunityPosts({

@@ -90,24 +90,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     ref.read(authProvider.notifier).finishRegistration();
   }
 
-  Future<void> _enroll() async {
-    if (!_hasSelection()) return;
-    if (_selectedSubjectIds.length > AppConstants.maxTrialSubjects) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'The free trial covers up to ${AppConstants.maxTrialSubjects} subjects. Pay now to unlock them all.'),
-            backgroundColor: AppColors.error),
-      );
-      return;
-    }
-    await ref.read(authProvider.notifier).enrollSubjects(
-      _selectedSubjectIds.toList(),
-      form: _selectedForm,
-    );
-    if (mounted) context.go(AppRoutes.dashboard);
-  }
-
   void _skipEnrollment() {
     ref.read(authProvider.notifier).finishRegistration();
   }
@@ -282,13 +264,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             style: TextStyle(
                                 fontSize: 12, color: AppColors.textMuted),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        AppButton(
-                          label: 'Start ${AppConstants.trialDays}-Day Free Trial',
-                          onTap: _enroll,
-                          isOutlined: true,
-                          isLoading: authState.isLoading,
                         ),
                         const SizedBox(height: 10),
                         Center(

@@ -147,16 +147,6 @@ class AuthRepository {
     return _apiService.updateProfile(data);
   }
 
-  Future<void> createEnrollment({
-    required List<int> subjectIds,
-    required Map<String, dynamic> personalDetails,
-  }) async {
-    await _apiService.createEnrollment(
-      subjectIds: subjectIds,
-      personalDetails: personalDetails,
-    );
-  }
-
   Future<void> forgotPassword(String email) async {
     await _apiService.forgotPassword(email);
   }
