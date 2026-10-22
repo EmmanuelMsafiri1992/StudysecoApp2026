@@ -50,16 +50,148 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 )
               : state.materials.isEmpty
                   ? const _EmptyView()
-                  : RefreshIndicator(
-                      onRefresh: () => ref.read(libraryProvider.notifier).load(),
-                      color: AppColors.primary,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: state.materials.length,
-                        itemBuilder: (context, index) =>
-                            _MaterialCard(material: state.materials[index]),
-                      ),
+                  : Column(
+                      children: [
+                        _ClassFilterBar(
+                          classes: state.classes,
+                          selected: state.selectedClass,
+                          onSelected: (cls) =>
+                              ref.read(libraryProvider.notifier).selectClass(cls),
+                        ),
+                        Expanded(
+                          child: RefreshIndicator(
+                            onRefresh: () =>
+                                ref.read(libraryProvider.notifier).load(),
+                            color: AppColors.primary,
+                            child: state.filteredMaterials.isEmpty
+                                ? _NoClassMaterialsView(
+                                    className: state.selectedClass ?? '',
+                                    onShowAll: () => ref
+                                        .read(libraryProvider.notifier)
+                                        .selectClass(null),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                                    itemCount: state.filteredMaterials.length,
+                                    itemBuilder: (context, index) => _MaterialCard(
+                                        material: state.filteredMaterials[index]),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
+    );
+  }
+}
+
+/// Horizontal row of class chips ("All", "Form 1", …) at the top of the list.
+class _ClassFilterBar extends StatelessWidget {
+  final List<String> classes;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+
+  const _ClassFilterBar({
+    required this.classes,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final options = <String?>[null, ...classes];
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Class',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: options.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final cls = options[index];
+                final isSelected = cls == selected;
+                return ChoiceChip(
+                  label: Text(cls ?? 'All classes'),
+                  selected: isSelected,
+                  onSelected: (_) => onSelected(cls),
+                  showCheckmark: false,
+                  selectedColor: AppColors.primary,
+                  backgroundColor: AppColors.cardBg,
+                  side: BorderSide(
+                    color: isSelected ? AppColors.primary : AppColors.divider,
+                  ),
+                  labelStyle: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown when the chosen class has no materials yet.
+class _NoClassMaterialsView extends StatelessWidget {
+  final String className;
+  final VoidCallback onShowAll;
+  const _NoClassMaterialsView({required this.className, required this.onShowAll});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const SizedBox(height: 40),
+        const Icon(Icons.library_books_outlined, size: 56, color: AppColors.textMuted),
+        const SizedBox(height: 16),
+        Text(
+          'No materials for $className yet',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Pick another class above, or view\nmaterials for all classes',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: TextButton.icon(
+            onPressed: onShowAll,
+            icon: const Icon(Icons.filter_alt_off_rounded),
+            label: const Text('Show all classes'),
+          ),
+        ),
+      ],
     );
   }
 }

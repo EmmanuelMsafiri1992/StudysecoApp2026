@@ -12,6 +12,10 @@ class LibraryMaterialModel {
   final int viewCount;
   final DateTime createdAt;
 
+  /// Classes this material belongs to, e.g. ['Form 3', 'Form 4'].
+  /// Empty means the class is unknown, so it is shown under every class.
+  final List<String> gradeLevels;
+
   LibraryMaterialModel({
     required this.id,
     required this.title,
@@ -25,7 +29,26 @@ class LibraryMaterialModel {
     this.thumbnailUrl,
     this.viewCount = 0,
     required this.createdAt,
+    this.gradeLevels = const [],
   });
+
+  static List<String> _parseGradeLevels(Map<String, dynamic> json, Map? subject) {
+    final raw = json['grade_levels'] ?? json['classes'] ?? json['forms'];
+    final levels = <String>[];
+    if (raw is List) {
+      for (final g in raw) {
+        final s = g is Map ? (g['grade_level'] ?? g['name'])?.toString() : g?.toString();
+        if (s != null && s.trim().isNotEmpty) levels.add(s.trim());
+      }
+    }
+    if (levels.isEmpty) {
+      final text = json['grade_level'] ?? json['class'] ?? json['form'] ?? subject?['grade_level'];
+      if (text != null) {
+        levels.addAll(text.toString().split(',').map((g) => g.trim()).where((g) => g.isNotEmpty));
+      }
+    }
+    return levels.toSet().toList();
+  }
 
   factory LibraryMaterialModel.fromJson(Map<String, dynamic> json) {
     final rawUrl = json['file_url'] ?? json['url'] ?? json['download_url'] ?? json['path'];
@@ -64,7 +87,15 @@ class LibraryMaterialModel {
       thumbnailUrl: thumbnailUrl,
       viewCount: json['view_count'] ?? json['views'] ?? 0,
       createdAt: createdAt,
+      gradeLevels: _parseGradeLevels(json, subject),
     );
+  }
+
+  /// Whether this material should appear when [gradeLevel] is selected.
+  bool isForClass(String gradeLevel) {
+    if (gradeLevels.isEmpty) return true;
+    final wanted = gradeLevel.toLowerCase().trim();
+    return gradeLevels.any((g) => g.toLowerCase() == wanted);
   }
 
   String get fileSizeLabel {
