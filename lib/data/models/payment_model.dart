@@ -126,6 +126,12 @@ class AccessDurationModel {
     final rate = _perSubjectPerMonth(currency);
     return [
       AccessDurationModel(
+        months: 1,
+        label: 'Monthly',
+        price: rate * subjectCount,
+        currency: currency,
+      ),
+      AccessDurationModel(
         months: 4,
         label: '4 Months',
         price: rate * 4 * subjectCount,

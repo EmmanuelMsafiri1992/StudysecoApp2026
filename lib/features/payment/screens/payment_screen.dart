@@ -330,9 +330,10 @@ class _DurationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final symbol = AppConstants.currencySymbols[duration.currency] ?? duration.currency;
+    final monthsText = duration.months == 1 ? '1 month' : '${duration.months} months';
     final subtitle = subjectCount > 0
-        ? '$subjectCount subject${subjectCount == 1 ? '' : 's'} · ${duration.months} months'
-        : '${duration.months} months · all content';
+        ? '$subjectCount subject${subjectCount == 1 ? '' : 's'} · $monthsText'
+        : '$monthsText · all content';
     return GestureDetector(
       onTap: onTap,
       child: Container(
