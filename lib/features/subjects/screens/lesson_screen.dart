@@ -35,19 +35,31 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     super.dispose();
   }
 
-  void _enterFullscreen() {
+  /// Opens the player on its own page above the whole app (app bar and
+  /// bottom tabs included), rotated to landscape, with the system bars hidden.
+  Future<void> _enterFullscreen() async {
+    final controller = _webController;
+    if (controller == null || _isFullscreen) return;
+    // Detach the inline player first so only the fullscreen page hosts it.
     setState(() => _isFullscreen = true);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _FullscreenVideoPage(controller: controller),
+      ),
+    );
+    _exitFullscreen();
   }
 
   void _exitFullscreen() {
-    setState(() => _isFullscreen = false);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (mounted) setState(() => _isFullscreen = false);
   }
 
   @override
@@ -176,8 +188,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
-            body { margin: 0; background: #0F172A; }
-            iframe { width: 100%; height: 220px; border: none; }
+            html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #0F172A; overflow: hidden; }
+            iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
           </style>
         </head>
         <body>
@@ -192,8 +204,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-          body { margin: 0; background: #0F172A; display: flex; align-items: center; justify-content: center; height: 220px; }
-          video { width: 100%; height: 220px; background: #0F172A; }
+          html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #0F172A; overflow: hidden; }
+          video { position: absolute; inset: 0; width: 100%; height: 100%; background: #0F172A; object-fit: contain; }
         </style>
       </head>
       <body>
@@ -211,37 +223,17 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..loadHtmlString(_buildVideoHtml(lesson.videoUrl!));
 
-    if (_isFullscreen) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: WebViewWidget(controller: _webController!),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: SafeArea(
-                child: IconButton(
-                  icon: const Icon(Icons.fullscreen_exit_rounded, color: Colors.white, size: 28),
-                  onPressed: _exitFullscreen,
-                  style: IconButton.styleFrom(backgroundColor: Colors.black45),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       children: [
         Stack(
           children: [
             SizedBox(
               height: 220,
-              child: WebViewWidget(controller: _webController!),
+              // While the fullscreen page hosts the player, leave this slot
+              // empty so the web view is attached in one place only.
+              child: _isFullscreen
+                  ? const ColoredBox(color: Colors.black)
+                  : WebViewWidget(controller: _webController!),
             ),
             Positioned(
               bottom: 8,
@@ -499,5 +491,35 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         ),
       );
     }
+  }
+}
+
+/// Landscape, edge-to-edge video page pushed over the whole app.
+class _FullscreenVideoPage extends StatelessWidget {
+  final WebViewController controller;
+  const _FullscreenVideoPage({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(child: WebViewWidget(controller: controller)),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: SafeArea(
+              child: IconButton(
+                icon: const Icon(Icons.fullscreen_exit_rounded,
+                    color: Colors.white, size: 28),
+                onPressed: () => Navigator.of(context).pop(),
+                style: IconButton.styleFrom(backgroundColor: Colors.black45),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
