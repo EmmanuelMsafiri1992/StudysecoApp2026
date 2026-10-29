@@ -68,7 +68,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.onboarding,
     refreshListenable: notifier,
     redirect: (context, state) {
-      final isAuthenticated = ref.read(authProvider).isAuthenticated;
+      final authState = ref.read(authProvider);
+      final isAuthenticated = authState.isAuthenticated;
       final isAuthRoute = state.matchedLocation == AppRoutes.login ||
           state.matchedLocation == AppRoutes.register ||
           state.matchedLocation == AppRoutes.onboarding ||
@@ -85,6 +86,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         return AppRoutes.dashboard;
       }
+
+      // Redirect unsubscribed users away from premium routes.
+      // Skip while isProfileLoading — subscription status may still be stale
+      // from cache; the redirect will re-fire once the refresh completes.
+      if (isAuthenticated && !authState.isProfileLoading) {
+        const premiumPrefixes = [
+          '/subjects',
+          '/quizzes',
+          '/community',
+          '/library',
+          '/achievements',
+        ];
+        final isPremiumRoute = premiumPrefixes.any(
+          (p) => state.matchedLocation == p ||
+              state.matchedLocation.startsWith('$p/'),
+        );
+        if (isPremiumRoute &&
+            !(authState.user?.hasActiveSubscription ?? false)) {
+          return AppRoutes.enrollment;
+        }
+      }
+
       return null;
     },
     routes: [

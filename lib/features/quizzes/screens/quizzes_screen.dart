@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/quiz_model.dart';
 import '../../../data/services/api_service.dart';
+import '../../../shared/widgets/subscription_gate.dart';
 import '../providers/quiz_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -25,7 +26,11 @@ class QuizzesScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: quizzesAsync.when(
+      body: SubscriptionGate(
+        featureName: 'Quizzes',
+        featureDescription:
+            'Quizzes are available to enrolled students.\nSubscribe to test your knowledge.',
+        child: quizzesAsync.when(
         loading: () => _LoadingList(),
         error: (error, __) => Center(
           child: Column(
@@ -63,6 +68,7 @@ class QuizzesScreen extends ConsumerWidget {
                       .slideX(begin: 0.1, end: 0);
                 },
               ),
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/community_model.dart';
+import '../../../shared/widgets/subscription_gate.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/moderation_menu.dart';
@@ -54,7 +55,11 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           ),
         ],
       ),
-      body: state.isLoading && state.posts.isEmpty
+      body: SubscriptionGate(
+        featureName: 'Community',
+        featureDescription:
+            'The Community is available to enrolled students.\nSubscribe to connect with fellow learners.',
+        child: state.isLoading && state.posts.isEmpty
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.primary))
           : state.error != null && state.posts.isEmpty
@@ -108,6 +113,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     },
                   ),
                 ),
+      ),
     );
   }
 }

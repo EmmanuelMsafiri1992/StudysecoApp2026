@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/subject_model.dart';
+import '../../../shared/widgets/subscription_gate.dart';
 import '../providers/subjects_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -24,15 +25,20 @@ class SubjectDetailScreen extends ConsumerWidget {
     final title = subject?.name ?? topicsState.subjectName ?? '';
 
     return Scaffold(
-      body: topicsState.isLoading
-          ? _Loading()
-          : topicsState.error != null
-              ? _ErrorView(
-                  onRetry: () => ref
-                      .read(topicsProvider(slug).notifier)
-                      .loadTopics(slug))
-              : _SubjectContent(
-                  slug: slug, title: title, topics: topicsState.topics),
+      body: SubscriptionGate(
+        featureName: 'Subjects',
+        featureDescription:
+            'Subject content is available to enrolled students.\nSubscribe to start learning.',
+        child: topicsState.isLoading
+            ? _Loading()
+            : topicsState.error != null
+                ? _ErrorView(
+                    onRetry: () => ref
+                        .read(topicsProvider(slug).notifier)
+                        .loadTopics(slug))
+                : _SubjectContent(
+                    slug: slug, title: title, topics: topicsState.topics),
+      ),
     );
   }
 }

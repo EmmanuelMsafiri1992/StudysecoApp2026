@@ -13,12 +13,17 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 class AuthState {
   final UserModel? user;
   final bool isLoading;
+  /// True while a background profile refresh is in flight on startup.
+  /// Screen-level subscription guards should show a spinner during this window
+  /// to avoid flashing stale cached subscription state.
+  final bool isProfileLoading;
   final String? error;
   final bool isRegistering;
 
   const AuthState({
     this.user,
     this.isLoading = false,
+    this.isProfileLoading = false,
     this.error,
     this.isRegistering = false,
   });
@@ -28,6 +33,7 @@ class AuthState {
   AuthState copyWith({
     UserModel? user,
     bool? isLoading,
+    bool? isProfileLoading,
     String? error,
     bool? isRegistering,
     bool clearUser = false,
@@ -36,6 +42,7 @@ class AuthState {
     return AuthState(
       user: clearUser ? null : (user ?? this.user),
       isLoading: isLoading ?? this.isLoading,
+      isProfileLoading: isProfileLoading ?? this.isProfileLoading,
       error: clearError ? null : (error ?? this.error),
       isRegistering: isRegistering ?? this.isRegistering,
     );
@@ -54,8 +61,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (isLoggedIn) {
         final cached = await _repository.getCachedUser();
         if (cached != null) {
-          state = state.copyWith(user: cached, isLoading: false);
-          _refreshProfile();
+          // Mark isProfileLoading so screens can show a spinner while we
+          // verify the cached subscription status against the server.
+          state = state.copyWith(user: cached, isLoading: false, isProfileLoading: true);
+          _refreshProfileOnStartup();
         } else {
           final user = await _repository.getProfile();
           state = state.copyWith(user: user, isLoading: false);
@@ -64,7 +73,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(isLoading: false);
       }
     } catch (_) {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(isLoading: false, isProfileLoading: false);
+    }
+  }
+
+  Future<void> _refreshProfileOnStartup() async {
+    try {
+      final freshUser = await _repository.getProfile();
+      final existing = state.user;
+      final merged = existing == null ? freshUser : freshUser.copyWith(
+        form: (freshUser.form != null && freshUser.form!.isNotEmpty) ? freshUser.form : existing.form,
+        country: (freshUser.country != null && freshUser.country!.isNotEmpty) ? freshUser.country : existing.country,
+        currency: (freshUser.currency != null && freshUser.currency!.isNotEmpty) ? freshUser.currency : existing.currency,
+        schoolName: (freshUser.schoolName != null && freshUser.schoolName!.isNotEmpty) ? freshUser.schoolName : existing.schoolName,
+        enrolledSubjectIds: freshUser.enrolledSubjectIds.isNotEmpty ? freshUser.enrolledSubjectIds : existing.enrolledSubjectIds,
+      );
+      await _repository.saveUser(merged);
+      state = state.copyWith(user: merged, isProfileLoading: false);
+    } catch (_) {
+      state = state.copyWith(isProfileLoading: false);
     }
   }
 
@@ -160,22 +187,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         currency: (freshUser.currency != null && freshUser.currency!.isNotEmpty) ? freshUser.currency : existing.currency,
         schoolName: (freshUser.schoolName != null && freshUser.schoolName!.isNotEmpty) ? freshUser.schoolName : existing.schoolName,
         enrolledSubjectIds: freshUser.enrolledSubjectIds.isNotEmpty ? freshUser.enrolledSubjectIds : (existing.enrolledSubjectIds),
-      );
-      await _repository.saveUser(merged);
-      state = state.copyWith(user: merged);
-    } catch (_) {}
-  }
-
-  Future<void> _refreshProfile() async {
-    try {
-      final freshUser = await _repository.getProfile();
-      final existing = state.user;
-      final merged = existing == null ? freshUser : freshUser.copyWith(
-        form: (freshUser.form != null && freshUser.form!.isNotEmpty) ? freshUser.form : existing.form,
-        country: (freshUser.country != null && freshUser.country!.isNotEmpty) ? freshUser.country : existing.country,
-        currency: (freshUser.currency != null && freshUser.currency!.isNotEmpty) ? freshUser.currency : existing.currency,
-        schoolName: (freshUser.schoolName != null && freshUser.schoolName!.isNotEmpty) ? freshUser.schoolName : existing.schoolName,
-        enrolledSubjectIds: freshUser.enrolledSubjectIds.isNotEmpty ? freshUser.enrolledSubjectIds : existing.enrolledSubjectIds,
       );
       await _repository.saveUser(merged);
       state = state.copyWith(user: merged);

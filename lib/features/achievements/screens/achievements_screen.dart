@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/achievement_model.dart';
-import '../../../data/services/api_service.dart';
+import '../../../shared/widgets/subscription_gate.dart';
 import '../../auth/providers/auth_provider.dart';
 
 final achievementsProvider = FutureProvider<List<AchievementModel>>((ref) {
@@ -27,7 +27,11 @@ class AchievementsScreen extends ConsumerWidget {
           onPressed: () => context.pop(),
         ),
       ),
-      body: CustomScrollView(
+      body: SubscriptionGate(
+        featureName: 'Achievements',
+        featureDescription:
+            'Achievements are available to enrolled students.\nSubscribe to earn badges and track your progress.',
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Container(
@@ -164,6 +168,7 @@ class AchievementsScreen extends ConsumerWidget {
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
         ],
+        ),
       ),
     );
   }

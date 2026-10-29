@@ -15,7 +15,7 @@ class EnrollmentModel {
     this.subjects = const [],
   });
 
-  bool get isActive => status == 'active' &&
+  bool get isActive => (status == 'active' || status == 'approved') &&
     (expiresAt == null || expiresAt!.isAfter(DateTime.now()));
 
   factory EnrollmentModel.fromJson(Map<String, dynamic> json) {
