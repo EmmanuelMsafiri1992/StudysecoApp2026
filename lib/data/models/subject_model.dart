@@ -44,6 +44,14 @@ class SubjectModel {
     progressPercent: progressPercent, isEnrolled: enrolled,
   );
 
+  SubjectModel copyWithCounts({int? topicsCount, int? lessonsCount}) => SubjectModel(
+    id: id, name: name, slug: slug, description: description,
+    icon: icon, color: color, form: form, isCore: isCore,
+    topicsCount: topicsCount ?? this.topicsCount,
+    lessonsCount: lessonsCount ?? this.lessonsCount,
+    progressPercent: progressPercent, isEnrolled: isEnrolled,
+  );
+
   factory SubjectModel.fromJson(Map<String, dynamic> json) {
     final slug = json['slug'] ?? json['code'] ?? json['id'].toString();
     return SubjectModel(

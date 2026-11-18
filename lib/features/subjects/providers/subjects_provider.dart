@@ -54,6 +54,41 @@ class SubjectsNotifier extends StateNotifier<SubjectsState> {
       } catch (_) {}
 
       if (fromProfile.isNotEmpty) {
+        // If all subjects have topicsCount == 0, the profile endpoint didn't include
+        // topics_count — do a secondary enrichment fetch to get the real counts.
+        final allZero = fromProfile.every((s) => s.topicsCount == 0);
+        if (allZero) {
+          try {
+            final enriched = await _apiService.getEnrollmentSubjects(gradeLevel: form);
+            if (enriched.isEmpty) {
+              // Try without grade_level
+              final enrichedNoGrade = await _apiService.getEnrollmentSubjects();
+              if (enrichedNoGrade.isNotEmpty) {
+                final countMap = {for (final s in enrichedNoGrade) s.id: s};
+                final merged = fromProfile.map((s) {
+                  final detail = countMap[s.id];
+                  if (detail != null && (detail.topicsCount > 0 || detail.lessonsCount > 0)) {
+                    return s.copyWithCounts(topicsCount: detail.topicsCount, lessonsCount: detail.lessonsCount);
+                  }
+                  return s;
+                }).toList();
+                state = state.copyWith(subjects: merged, isLoading: false);
+                return;
+              }
+            } else {
+              final countMap = {for (final s in enriched) s.id: s};
+              final merged = fromProfile.map((s) {
+                final detail = countMap[s.id];
+                if (detail != null && (detail.topicsCount > 0 || detail.lessonsCount > 0)) {
+                  return s.copyWithCounts(topicsCount: detail.topicsCount, lessonsCount: detail.lessonsCount);
+                }
+                return s;
+              }).toList();
+              state = state.copyWith(subjects: merged, isLoading: false);
+              return;
+            }
+          } catch (_) {}
+        }
         state = state.copyWith(subjects: fromProfile, isLoading: false);
         return;
       }
