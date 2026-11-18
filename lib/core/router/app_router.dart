@@ -26,6 +26,10 @@ import '../../features/payment/screens/payment_screen.dart';
 import '../../features/payment/providers/payment_provider.dart';
 import '../../features/library/screens/library_screen.dart';
 import '../../features/payment/screens/payment_history_screen.dart';
+import '../../features/messaging/screens/inbox_screen.dart';
+import '../../features/messaging/screens/conversation_screen.dart';
+import '../../features/messaging/screens/new_message_screen.dart';
+import '../../data/models/messaging_model.dart';
 
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
@@ -59,6 +63,9 @@ class AppRoutes {
   static const String enrollment = '/enrollment';
   static const String blockedUsers = '/blocked-users';
   static const String paymentHistory = '/payment-history';
+  static const String inbox = '/messages';
+  static const String conversation = '/messages/:id';
+  static const String newMessage = '/messages/new';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -220,6 +227,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.paymentHistory,
         builder: (context, state) => const PaymentHistoryScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.inbox,
+        builder: (context, state) => const InboxScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.newMessage,
+        builder: (context, state) => const NewMessageScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.conversation,
+        builder: (context, state) {
+          final convo = state.extra as ConversationModel;
+          return ConversationScreen(conversation: convo);
+        },
       ),
     ],
   );

@@ -101,6 +101,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: const Text('Profile'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded,
+                color: AppColors.textSecondary),
+            tooltip: 'Messages',
+            onPressed: () => context.push(AppRoutes.inbox),
+          ),
+          IconButton(
             icon: Icon(
               _isEditing ? Icons.close_rounded : Icons.edit_rounded,
               color: AppColors.textSecondary,
@@ -275,6 +281,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   const SizedBox(height: 16),
                   const _SectionDivider(label: 'Account'),
+                  _MenuTile(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    label: 'Messages',
+                    color: AppColors.primary,
+                    onTap: () => context.push(AppRoutes.inbox),
+                  ),
                   _MenuTile(
                     icon: Icons.emoji_events_rounded,
                     label: 'Achievements',

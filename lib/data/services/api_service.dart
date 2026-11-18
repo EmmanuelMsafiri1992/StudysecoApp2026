@@ -8,6 +8,7 @@ import '../models/payment_model.dart';
 import '../models/enrollment_model.dart';
 import '../models/community_model.dart';
 import '../models/achievement_model.dart';
+import '../models/messaging_model.dart';
 import '../models/library_model.dart';
 import 'storage_service.dart';
 
@@ -741,6 +742,60 @@ class ApiService {
     } catch (_) {
       return {};
     }
+  }
+
+  // ── Messaging (stubbed — wire up when backend has /teachers & /conversations) ──
+
+  /// TODO: replace stub with GET /teachers
+  Future<List<TeacherModel>> getTeachers() async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return [
+      TeacherModel(id: 1, name: 'Mr. Banda', subject: 'Mathematics'),
+      TeacherModel(id: 2, name: 'Mrs. Phiri', subject: 'Biology'),
+      TeacherModel(id: 3, name: 'Mr. Chirwa', subject: 'Physics'),
+      TeacherModel(id: 4, name: 'Mrs. Mwale', subject: 'Chemistry'),
+      TeacherModel(id: 5, name: 'Mr. Tembo', subject: 'English'),
+      TeacherModel(id: 6, name: 'Mrs. Nyirenda', subject: 'Agriculture'),
+    ];
+  }
+
+  /// TODO: replace stub with GET /conversations
+  Future<List<ConversationModel>> getConversations() async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return [];
+  }
+
+  /// TODO: replace stub with GET /conversations/:id/messages
+  Future<List<MessageModel>> getMessages(int conversationId,
+      {required int currentUserId}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return [];
+  }
+
+  /// TODO: replace stub with POST /conversations
+  Future<ConversationModel> startConversation(int teacherId) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    final teachers = await getTeachers();
+    final teacher = teachers.firstWhere((t) => t.id == teacherId,
+        orElse: () => TeacherModel(id: teacherId, name: 'Teacher'));
+    return ConversationModel(
+      id: DateTime.now().millisecondsSinceEpoch,
+      teacher: teacher,
+      lastMessageAt: DateTime.now(),
+    );
+  }
+
+  /// TODO: replace stub with POST /conversations/:id/messages
+  Future<MessageModel> sendMessage(
+      int conversationId, String content) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return MessageModel(
+      id: DateTime.now().millisecondsSinceEpoch,
+      conversationId: conversationId,
+      content: content,
+      isFromMe: true,
+      createdAt: DateTime.now(),
+    );
   }
 
   List? _extractList(dynamic body, List<String> keys) {
